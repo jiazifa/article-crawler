@@ -20,9 +20,7 @@ dependencies = [
     "trafilatura>=1.10.0",
     "gne>=0.3.1",
     "requests>=2.32.3",
-    "fake-useragent>=1.5.1",
-    "beautifulsoup4>=4.12.3",
-    "playwright>=1.44.0",
+    "celery>=5.4.0",
 ]
 readme = "README.md"
 requires-python = ">= 3.10"
@@ -30,6 +28,4 @@ requires-python = ">= 3.10"
 [tool.rye]
 managed = true
 virtual = true
-dev-dependencies = [
-    "pytest>=8.2.2",
-]
+dev-dependencies = ["pytest>=8.2.2"]

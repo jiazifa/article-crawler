@@ -9,6 +9,8 @@
 
 alembic==1.13.1
     # via flask-migrate
+amqp==5.2.0
+    # via kombu
 aniso8601==9.0.1
     # via flask-restx
 attrs==23.2.0
@@ -16,23 +18,41 @@ attrs==23.2.0
     # via referencing
 babel==2.15.0
     # via courlan
-beautifulsoup4==4.12.3
+billiard==4.2.0
+    # via celery
 blinker==1.8.2
     # via flask
+celery==5.4.0
 certifi==2024.6.2
     # via requests
     # via trafilatura
+cffi==1.16.0
+    # via gevent
 charset-normalizer==3.3.2
     # via htmldate
     # via requests
     # via trafilatura
 click==8.1.7
+    # via celery
+    # via click-didyoumean
+    # via click-plugins
+    # via click-repl
     # via flask
+click-didyoumean==0.3.1
+    # via celery
+click-plugins==1.1.1
+    # via celery
+click-repl==0.3.0
+    # via celery
+colorama==0.4.6
+    # via click
+    # via pytest
 courlan==1.2.0
     # via trafilatura
 dateparser==1.2.0
     # via htmldate
-fake-useragent==1.5.1
+exceptiongroup==1.2.1
+    # via pytest
 feedparser==6.0.11
 flask==3.0.3
     # via flask-admin
@@ -52,7 +72,7 @@ gevent==24.2.1
 gne==0.3.1
 greenlet==3.0.3
     # via gevent
-    # via playwright
+    # via sqlalchemy
 gunicorn==22.0.0
 htmldate==1.8.1
     # via trafilatura
@@ -72,6 +92,8 @@ jsonschema-specifications==2023.12.1
     # via jsonschema
 justext==3.0.1
     # via trafilatura
+kombu==5.3.7
+    # via celery
 lxml==5.2.2
     # via gne
     # via htmldate
@@ -92,13 +114,15 @@ numpy==2.0.0
 packaging==24.1
     # via gunicorn
     # via pytest
-playwright==1.44.0
 pluggy==1.5.0
     # via pytest
-pyee==11.1.0
-    # via playwright
+prompt-toolkit==3.0.47
+    # via click-repl
+pycparser==2.22
+    # via cffi
 pytest==8.2.2
 python-dateutil==2.9.0.post0
+    # via celery
     # via dateparser
     # via htmldate
 python-dotenv==1.0.1
@@ -123,8 +147,6 @@ sgmllib3k==1.0.0
     # via feedparser
 six==1.16.0
     # via python-dateutil
-soupsieve==2.5
-    # via beautifulsoup4
 sqlalchemy==2.0.30
     # via alembic
     # via flask-sqlalchemy
@@ -132,11 +154,15 @@ sqlalchemy==2.0.30
 sqlalchemy-utils==0.41.2
 tld==0.13
     # via courlan
+tomli==2.0.1
+    # via pytest
 trafilatura==1.10.0
 typing-extensions==4.12.2
     # via alembic
-    # via pyee
     # via sqlalchemy
+tzdata==2024.1
+    # via celery
+    # via tzlocal
 tzlocal==5.2
     # via dateparser
 urllib3==2.2.2
@@ -144,6 +170,12 @@ urllib3==2.2.2
     # via htmldate
     # via requests
     # via trafilatura
+vine==5.1.0
+    # via amqp
+    # via celery
+    # via kombu
+wcwidth==0.2.13
+    # via prompt-toolkit
 werkzeug==3.0.3
     # via flask
     # via flask-login

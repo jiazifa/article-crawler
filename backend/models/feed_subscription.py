@@ -28,14 +28,6 @@ class SubscriptionStatus(IntEnum):
     INACTIVE = 0
 
 
-class SusbscriptionType(IntEnum):
-    """Subscription type"""
-
-    RSS = 1
-    ATOM = 2
-    JSON = 3
-
-
 class FeedSubscriptionInDB(db.Model):
     __tablename__ = "feed_subscription"
 
