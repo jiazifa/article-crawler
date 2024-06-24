@@ -1,6 +1,7 @@
 from typing import Optional
 from datetime import datetime
 import time
+from logging import getLogger
 import requests
 from sqlalchemy import select
 from sqlalchemy.orm import scoped_session
@@ -18,6 +19,8 @@ from .schema import (
     QueryRssEntitykOption,
 )
 from libs.schema import PageResponse
+
+logger = getLogger(__name__)
 
 
 class _RssController:
@@ -57,6 +60,7 @@ class RssController:
         try:
             rss = feed_parser_func(resp.text)
         except Exception:
+            logger.error(f"parser feed from url error: {url}")
             return None
         return rss
 
@@ -72,6 +76,10 @@ class RssController:
         rss_dict = self.parser_feed_from_url(url)
         if rss_dict is None:
             return None
+
+        if "bozo" in rss_dict and rss_dict["bozo"]:
+            return None
+
         rss_root = self._parser_rss_from_feed(url, rss_dict)
         if not rss_root:
             return None

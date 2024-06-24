@@ -1,14 +1,34 @@
 from datetime import datetime
 from typing import Optional
 from dataclasses import dataclass
-from libs.schema import PageRequest
+from libs.schema import PageRequest, Author
 
 
 @dataclass
-class Author:
-    name: str
-    email: Optional[str] = None
-    uri: Optional[str] = None
+class ArticleItem:
+    """
+    表示具体的文章链接项目。
+
+    属性:
+    - title: str，标题
+    - link: Optional[str]，链接
+    - content: str, 文章内容
+    - author: Optional[str]，作者
+    - published: Optional[datetime]，发布时间
+    - summary: Optional[str]，摘要
+    - images: Optional[List[str]]，图片
+    - extra: Optional[Dict[str, Any]]，额外的信息
+    """
+
+    title: str
+    link: str
+    content: str
+
+    author: Optional[Author] = None
+    published: Optional[datetime] = None
+    summary: Optional[str] = None
+    images: Optional[list[str]] = None
+    extra: Optional[dict[str, any]] = None
 
 
 @dataclass

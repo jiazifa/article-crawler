@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Generic, TypeVar
+from typing import Generic, TypeVar, Optional
 
 
 @dataclass
@@ -41,3 +41,10 @@ class PageResponse(Generic[PageRespItem]):
             page_size=page.page_size,
             data=data,
         )
+
+
+@dataclass
+class Author:
+    name: str
+    email: Optional[str] = None
+    uri: Optional[str] = None

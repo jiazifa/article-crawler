@@ -1,0 +1,31 @@
+version: '3'
+
+services:
+  js-server:
+    image: js-server-image
+    container_name: js-server-container
+    build:
+      context: ../js-server
+      dockerfile: Dockerfile
+    networks:
+      - my-network
+    restart: unless-stopped
+    ports:
+      - "8000:3000"
+
+  python-api-server:
+    image: python-api-server-image
+    container_name: python-api-server-container
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+
+    networks:
+      - my-network
+
+    restart: unless-stopped
+    ports:
+      - "8001:5000"
+    volumes:
+      - ../data:/app/instance
+    command: ""

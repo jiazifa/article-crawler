@@ -4,6 +4,12 @@
       "path": "backend"
     },
     {
+      "path": "js-server"
+    },
+    {
+      "path": "docker"
+    },
+    {
       "path": "."
     }
   ],
