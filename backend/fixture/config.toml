@@ -1,0 +1,44 @@
+[server]
+name = "rss-backend"
+version = "0.1.0"
+
+[web]
+# 服务器ip 端口
+address = "0.0.0.0:8001"
+# 开启压缩
+compress = true
+# 管理员账户
+admin_name = "admin"
+# 管理员密码
+admin_password = "admin"
+
+[log]
+dir = "logs"
+# 允许操作日志
+enable_oper_log = true
+# 日志级别
+level = "DEBUG" #  TRACE DEBUG  INFO  WARN ERROR
+
+[jwt]
+# 单位 分钟
+jwt_exp = 14400                                 # 10天 14400
+jwt_secret = 'be644d2c30f72db7e9ec623c1adf49f5'
+
+[database]
+
+# uri = 'mysql://root:password@192.168.1.11:13306/db'
+# uri = 'mysql://root:password@127.0.0.1:13306/db'
+# uri = 'postgres://postgres:password@192.168.1.11:15432/db'
+uri = 'sqlite://./data/article-data.sqlite3?mode=rwc'
+# uri = 'mysql://root:password@localhost:3306/db'
+
+[openai]
+# openai api key
+api_key = ""
+# openai api base
+api_base = "http://localhost:11434/v1"
+
+# 配置 Docker 内的各个服务的host
+[services]
+js_server_host = "http://localhost:3000"
+web_api_host = "http://localhost:8888"

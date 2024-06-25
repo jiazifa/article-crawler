@@ -1,0 +1,122 @@
+{
+  "name": "Industry Insights",
+  "children": [
+    {
+      "name": "Agriculture",
+      "description": "",
+      "sortOrder": 1,
+      "id": 4001
+    },
+    {
+      "name": "Automotive",
+      "description": "",
+      "sortOrder": 2,
+      "id": 4002
+    },
+    {
+      "name": "Beauty",
+      "description": "",
+      "sortOrder": 3,
+      "id": 4003
+    },
+    {
+      "name": "Biopharma",
+      "description": "",
+      "sortOrder": 4,
+      "id": 4004
+    },
+    {
+      "name": "Defense",
+      "description": "",
+      "sortOrder": 5,
+      "id": 4005
+    },
+    {
+      "name": "Energy & Water",
+      "description": "",
+      "sortOrder": 6,
+      "id": 4006
+    },
+    {
+      "name": "Fashion",
+      "description": "",
+      "sortOrder": 7,
+      "id": 4007
+    },
+    {
+      "name": "Food & Beverage",
+      "description": "",
+      "sortOrder": 8,
+      "id": 4008
+    },
+    {
+      "name": "Healthcare",
+      "description": "",
+      "sortOrder": 9,
+      "id": 4009
+    },
+    {
+      "name": "Legal",
+      "description": "",
+      "sortOrder": 10,
+      "id": 4010
+    },
+    {
+      "name": "Luxury",
+      "description": "",
+      "sortOrder": 11,
+      "id": 4011
+    },
+    {
+      "name": "Manufacturing",
+      "description": "",
+      "sortOrder": 12,
+      "id": 4012
+    },
+    {
+      "name": "Medical Devices",
+      "description": "",
+      "sortOrder": 13,
+      "id": 4013
+    },
+    {
+      "name": "Mining",
+      "description": "",
+      "sortOrder": 14,
+      "id": 4014
+    },
+    {
+      "name": "Real Estate",
+      "description": "",
+      "sortOrder": 15,
+      "id": 4015
+    },
+    {
+      "name": "Retail",
+      "description": "",
+      "sortOrder": 16,
+      "id": 4016
+    },
+    {
+      "name": "Science Journals",
+      "description": "",
+      "sortOrder": 17,
+      "id": 4017
+    },
+    {
+      "name": "Travel & Hospitality",
+      "description": "",
+      "sortOrder": 18,
+      "id": 4018
+    },
+    {
+      "name": "Transport & Logistics",
+      "description": "",
+      "sortOrder": 19,
+      "id": 4019
+    }
+  ],
+  "description": "",
+  "sortOrder": 4,
+  "id": 4000
+}

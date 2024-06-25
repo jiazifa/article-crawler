@@ -1,0 +1,23 @@
+[package]
+name = "lib-openai"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+async-openai = "0.20.0"
+tiktoken-rs = { version = "0.5.8" }
+anyhow = { workspace = true }
+serde_json = { workspace = true }
+serde = { workspace = true }
+
+# add dep in dev
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["full"] }
+dotenv = { version = "0" }
+
+[lints]
+workspace = true

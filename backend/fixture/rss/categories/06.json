@@ -1,0 +1,44 @@
+{
+  "name": "Skills & Learning",
+  "children": [
+    {
+      "name": "Content & Writing",
+      "description": "",
+      "sortOrder": 1,
+      "id": 6001
+    },
+    {
+      "name": "Entrepreneurship",
+      "description": "",
+      "sortOrder": 2,
+      "id": 6002
+    },
+    {
+      "name": "Freelance & Remote Jobs",
+      "description": "",
+      "sortOrder": 3,
+      "id": 6003
+    },
+    {
+      "name": "Leadership & Management",
+      "description": "",
+      "sortOrder": 4,
+      "id": 6004
+    },
+    {
+      "name": "Product Management",
+      "description": "",
+      "sortOrder": 5,
+      "id": 6005
+    },
+    {
+      "name": "Productivity",
+      "description": "",
+      "sortOrder": 6,
+      "id": 6006
+    }
+  ],
+  "description": "",
+  "sortOrder": 6,
+  "id": 6000
+}

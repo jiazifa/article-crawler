@@ -1,0 +1,116 @@
+{
+  "name": "Hobby & Lifestyle",
+  "children": [
+    {
+      "name": "Arts & Culture",
+      "description": "",
+      "sortOrder": 1,
+      "id": 7001
+    },
+    {
+      "name": "Books & Reading",
+      "description": "",
+      "sortOrder": 2,
+      "id": 7002
+    },
+    {
+      "name": "Cars",
+      "description": "",
+      "sortOrder": 3,
+      "id": 7003
+    },
+    {
+      "name": "Cocktails & Drinks",
+      "description": "",
+      "sortOrder": 4,
+      "id": 7004
+    },
+    {
+      "name": "Comics & Humor",
+      "description": "",
+      "sortOrder": 5,
+      "id": 7005
+    },
+    {
+      "name": "Cooking & Recipies",
+      "description": "",
+      "sortOrder": 6,
+      "id": 7006
+    },
+    {
+      "name": "Dating & Relationships",
+      "description": "",
+      "sortOrder": 7,
+      "id": 7007
+    },
+    {
+      "name": "DIY & Crafts",
+      "description": "",
+      "sortOrder": 8,
+      "id": 7008
+    },
+    {
+      "name": "Fashion & Beauty",
+      "description": "",
+      "sortOrder": 9,
+      "id": 7009
+    },
+    {
+      "name": "Health & Wellness",
+      "description": "",
+      "sortOrder": 10,
+      "id": 7010
+    },
+    {
+      "name": "Inspiration & Creativity",
+      "description": "",
+      "sortOrder": 11,
+      "id": 7011
+    },
+    {
+      "name": "Interior Design & Architecture",
+      "description": "",
+      "sortOrder": 12,
+      "id": 7012
+    },
+    {
+      "name": "Movies & TV",
+      "description": "",
+      "sortOrder": 13,
+      "id": 7013
+    },
+    {
+      "name": "Music",
+      "description": "",
+      "sortOrder": 14,
+      "id": 7014
+    },
+    {
+      "name": "Photography",
+      "description": "",
+      "sortOrder": 15,
+      "id": 7015
+    },
+    {
+      "name": "Podcasts",
+      "description": "",
+      "sortOrder": 16,
+      "id": 7016
+    },
+    {
+      "name": "Product Reviews",
+      "description": "",
+      "sortOrder": 17,
+      "id": 7017
+    },
+    {
+      "name": "Travel",
+      "description": "",
+      "sortOrder": 18,
+      "id": 7018
+    }
+  ],
+  "description": "",
+  "sortOrder": 7,
+  "id": 7000
+}

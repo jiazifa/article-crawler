@@ -1,0 +1,92 @@
+{
+  "name": "Tech News & Trends",
+  "children": [
+    {
+      "name": "Tech News",
+      "description": "",
+      "sortOrder": 1,
+      "id": 2001
+    },
+    {
+      "name": "AI",
+      "description": "",
+      "sortOrder": 2,
+      "id": 2002
+    },
+    {
+      "name": "Blockchain & Cryptocurrency",
+      "description": "",
+      "sortOrder": 3,
+      "id": 2003
+    },
+    {
+      "name": "Cybersecurity",
+      "description": "",
+      "sortOrder": 4,
+      "id": 2004
+    },
+    {
+      "name": "Data Science & ML",
+      "description": "",
+      "sortOrder": 5,
+      "id": 2005
+    },
+    {
+      "name": "Design & Animation",
+      "description": "",
+      "sortOrder": 6,
+      "id": 2006
+    },
+    {
+      "name": "Game Design",
+      "description": "",
+      "sortOrder": 7,
+      "id": 2007
+    },
+    {
+      "name": "Health Tech",
+      "description": "",
+      "sortOrder": 8,
+      "id": 2008
+    },
+    {
+      "name": "Mobile Development",
+      "description": "",
+      "sortOrder": 9,
+      "id": 2009
+    },
+    {
+      "name": "Programming",
+      "description": "",
+      "sortOrder": 10,
+      "id": 2010
+    },
+    {
+      "name": "Telecom",
+      "description": "",
+      "sortOrder": 11,
+      "id": 2011
+    },
+    {
+      "name": "Virtual Reality",
+      "description": "",
+      "sortOrder": 12,
+      "id": 2012
+    },
+    {
+      "name": "Web Design, UX & UI",
+      "description": "",
+      "sortOrder": 13,
+      "id": 2013
+    },
+    {
+      "name": "Web Development",
+      "description": "",
+      "sortOrder": 14,
+      "id": 2014
+    }
+  ],
+  "description": "",
+  "sortOrder": 2,
+  "id": 2000
+}

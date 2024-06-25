@@ -1,0 +1,56 @@
+{
+  "name": "Business & Finance",
+  "children": [
+    {
+      "name": "Finance & Economics",
+      "description": "",
+      "sortOrder": 1,
+      "id": 3001
+    },
+    {
+      "name": "Commodities",
+      "description": "",
+      "sortOrder": 2,
+      "id": 3002
+    },
+    {
+      "name": "Crypto",
+      "description": "",
+      "sortOrder": 3,
+      "id": 3003
+    },
+    {
+      "name": "ETFs",
+      "description": "",
+      "sortOrder": 4,
+      "id": 3004
+    },
+    {
+      "name": "Forex",
+      "description": "",
+      "sortOrder": 5,
+      "id": 3005
+    },
+    {
+      "name": "Insurance",
+      "description": "",
+      "sortOrder": 6,
+      "id": 3006
+    },
+    {
+      "name": "Investing",
+      "description": "",
+      "sortOrder": 7,
+      "id": 3007
+    },
+    {
+      "name": "Markets",
+      "description": "",
+      "sortOrder": 8,
+      "id": 3008
+    }
+  ],
+  "description": "",
+  "sortOrder": 3,
+  "id": 3000
+}

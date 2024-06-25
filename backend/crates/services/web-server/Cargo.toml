@@ -1,0 +1,51 @@
+[package]
+name = "web-server"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lints]
+workspace = true
+
+[dependencies]
+lib-core = { path = "../../libs/lib-core" }
+lib-entity = { path = "../../libs/lib-entity" }
+lib-utils = { path = "../../libs/lib-utils" }
+lib-openai = { path = "../../libs/lib-openai" }
+migration = { path = "../../migration" }
+
+clap = { version = "4", features = ["derive"] }
+
+# 服务端依赖
+http-body = { version = "^1" }
+axum = { version = "^0.7", features = ["tracing"] }
+axum-extra = { version = "^0.9", features = ["typed-header"] }
+
+hyper = { version = "^1", features = ["full"] }
+
+tower = { version = "^0.4", features = ["util", "timeout", "limit"] }
+tower-http = { version = "^0.5", features = ["full"] }
+
+# jwt
+jsonwebtoken = { version = "^9" }
+
+async-trait = { workspace = true }
+tracing = { workspace = true }
+tracing-appender = { workspace = true }
+tracing-subscriber = { workspace = true, features = ["env-filter"] }
+
+tokio = { workspace = true, features = ["full"] }
+futures = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+chrono = { workspace = true }
+thiserror = { workspace = true }
+rand = { workspace = true }
+md5 = { workspace = true }
+# 网络请求
+reqwest = { workspace = true, features = ["json"] }
+
+[features]
+develop = []
+release = []

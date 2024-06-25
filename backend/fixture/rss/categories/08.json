@@ -1,0 +1,50 @@
+{
+  "name": "Sports",
+  "children": [
+    {
+      "name": "Sport News",
+      "description": "",
+      "sortOrder": 1,
+      "id": 8001
+    },
+    {
+      "name": "Basketball",
+      "description": "",
+      "sortOrder": 2,
+      "id": 8002
+    },
+    {
+      "name": "Betting",
+      "description": "",
+      "sortOrder": 3,
+      "id": 8003
+    },
+    {
+      "name": "Fitness",
+      "description": "",
+      "sortOrder": 4,
+      "id": 8004
+    },
+    {
+      "name": "Football",
+      "description": "",
+      "sortOrder": 5,
+      "id": 8005
+    },
+    {
+      "name": "Gaming & eSports",
+      "description": "",
+      "sortOrder": 6,
+      "id": 8006
+    },
+    {
+      "name": "Tennis",
+      "description": "",
+      "sortOrder": 7,
+      "id": 8007
+    }
+  ],
+  "description": "",
+  "sortOrder": 8,
+  "id": 8000
+}

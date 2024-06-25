@@ -1,0 +1,80 @@
+[workspace.lints.rust]
+unsafe_code = "forbid"
+unused = "allow"
+
+[workspace]
+
+resolver = "2"
+
+members = [
+    "crates/migration",
+    # libs
+    "crates/libs/lib-core",
+    "crates/libs/lib-crawler",
+    "crates/libs/lib-utils",
+    "crates/libs/lib-entity",
+    "crates/libs/lib-openai",
+    # services
+    "crates/services/web-server",
+    "crates/services/crawler",
+]
+
+[profile.release]
+# 开启所有优化，包括链接时间优化（LTO）
+lto = true
+# 开启更多的优化，但可能会增加编译时间
+codegen-units = 1
+# 开启所有可能的优化
+opt-level = 3
+# 开启 panic 时的堆栈展开，这会增加二进制文件的大小，但可以在 panic 时提供更多的信息
+# 如果你不需要这些信息，可以设置为 'abort' 来减小二进制文件的大小
+panic = 'unwind'
+
+
+[workspace.dependencies]
+async-trait = "^0.1"
+
+# axum-server = { version = "^0.5" }
+# 网络请求
+reqwest = { version = "^0.12" }
+# html 解析
+scraper = { version = "^0.19" }
+# 时间解析到标准时间
+dateparser = { version = "^0.2" }
+# builder 模式
+derive_builder = { version = "^0.20" }
+# Rss 解析
+rss = { version = "^2" }
+
+chrono = { version = "0.4" }
+
+
+serde = { version = "^1" }
+serde_json = { version = "^1" }
+tokio = { version = "1" }
+futures = { version = "0.3.30" }
+toml = { version = "0.8" }
+thiserror = { version = "1" }
+anyhow = { version = "1" }
+tracing = { version = "0.1" }
+tracing-appender = { version = "0.2" }
+tracing-subscriber = { version = "0.3" }
+
+#  随机数
+uuid = { version = "^1" }
+md5 = { version = "0.7" }
+rand = { version = "0.8" }
+num_cpus = { version = "^1" }
+scru128 = { version = "3" }
+config = { version = "0.14" }
+# sea-orm
+sea-orm = { version = "0", features = [
+    "sqlx-sqlite",
+    "sqlx-mysql",
+    "runtime-tokio-rustls",
+    "macros",
+    "with-chrono",
+    "with-uuid",
+] }
+sea-query = { version = "0", features = ["with-chrono", "with-uuid"] }
+sqlx = { version = "0.7", features = ["runtime-tokio-rustls"] }

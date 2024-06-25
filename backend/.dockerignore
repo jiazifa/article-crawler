@@ -1,10 +1,2 @@
-Dockerfile*
-docker-compose*
-.dockerignore
-.git
-.gitignore
-README.md
-LICENSE
-.vscode
-__pycache__
-env
+target/
+data/

@@ -1,0 +1,50 @@
+[package]
+name = "lib-core"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+doctest = false
+
+[lints]
+workspace = true
+
+
+[dependencies]
+
+lib-crawler = { path = "../../libs/lib-crawler" }
+lib-openai = { path = "../../libs/lib-openai" }
+lib-entity = { path = "../../libs/lib-entity" }
+lib-utils = { path = "../../libs/lib-utils" }
+
+thiserror = { workspace = true }
+
+dateparser = { workspace = true }
+async-trait = { workspace = true }
+tracing = { workspace = true }
+chrono = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+rss = { workspace = true }
+
+sea-orm = { workspace = true }
+sqlx = { workspace = true }
+tokio = { workspace = true, features = ["full"] }
+
+scru128 = { workspace = true }
+uuid = { workspace = true, features = ["v4"] }
+anyhow = { workspace = true }
+derive_builder = { workspace = true }
+
+# for test
+[dev-dependencies]
+migration = { path = "../../migration" }
+# only dev add ["debug-print", "mock"] features to sea-orm
+sea-orm = { workspace = true, features = ["debug-print", "mock"] }
+
+[features]
+develop = []
+release = []

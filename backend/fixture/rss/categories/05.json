@@ -1,0 +1,62 @@
+{
+  "name": "Marketing & Media",
+  "children": [
+    {
+      "name": "Advertising",
+      "description": "",
+      "sortOrder": 1,
+      "id": 5001
+    },
+    {
+      "name": "Digital Marketing",
+      "description": "",
+      "sortOrder": 2,
+      "id": 5002
+    },
+    {
+      "name": "Growth Marketing",
+      "description": "",
+      "sortOrder": 3,
+      "id": 5003
+    },
+    {
+      "name": "Media & Entertainment",
+      "description": "",
+      "sortOrder": 4,
+      "id": 5004
+    },
+    {
+      "name": "Public Relations",
+      "description": "",
+      "sortOrder": 5,
+      "id": 5005
+    },
+    {
+      "name": "Publishing",
+      "description": "",
+      "sortOrder": 6,
+      "id": 5006
+    },
+    {
+      "name": "Sales",
+      "description": "",
+      "sortOrder": 7,
+      "id": 5007
+    },
+    {
+      "name": "SEO",
+      "description": "",
+      "sortOrder": 8,
+      "id": 5008
+    },
+    {
+      "name": "Social Media Marketing",
+      "description": "",
+      "sortOrder": 9,
+      "id": 5009
+    }
+  ],
+  "description": "",
+  "sortOrder": 5,
+  "id": 5000
+}

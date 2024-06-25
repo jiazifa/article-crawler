@@ -1,0 +1,39 @@
+[package]
+name = "lib-crawler"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+doctest = false
+
+[lints]
+workspace = true
+
+
+[dependencies]
+
+# 时间解析
+dateparser = { workspace = true }
+# rss 解析
+rss = { workspace = true, features = ["serde"] }
+feed-rs = { version = "^1" }
+anyhow = { workspace = true }
+
+tokio = { workspace = true, features = ["full"] }
+rand = { workspace = true }
+
+tracing = { workspace = true }
+
+# 网络请求
+reqwest = { workspace = true }
+# 推导
+derive_builder = { workspace = true }
+# html 解析
+scraper = { workspace = true }
+serde_json = { workspace = true }
+serde = { workspace = true }
+# html 标签清洗
+sanitize_html = { version = "0" }
