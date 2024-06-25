@@ -1,9 +1,10 @@
 version: '3'
 
 services:
-  js-server:
-    image: js-server-image
-    container_name: js-server-container
+  # JS Server
+  article-js-server:
+    image: article-js-server-image
+    container_name: article-s-server-container
     build:
       context: ../js-server
       dockerfile: Dockerfile
@@ -11,21 +12,60 @@ services:
       - my-network
     restart: unless-stopped
     ports:
-      - "8000:3000"
+      - "8002:3000"
 
-  python-api-server:
-    image: python-api-server-image
-    container_name: python-api-server-container
+  # Frontend web Server
+  article-frontend:
+    image: article-frontend-image
+    container_name: name-frontend-container
     build:
-      context: ../backend
+      context: ../frontend/
       dockerfile: Dockerfile
-
     networks:
       - my-network
-
     restart: unless-stopped
     ports:
-      - "8001:5000"
+      - "8000:3000"
+    depends_on:
+      - article-web-api
+
+  # Crawler Server
+  article-crawler:
+    image: article-rust-image
+    container_name: article-crawler-container
+    build:
+      context: ../backend/
+      dockerfile: Dockerfile
+    networks:
+      - my-network
     volumes:
-      - ../data:/app/instance
-    command: ""
+      - ../logs:/app/logs
+      - ../data:/app/data
+    restart: unless-stopped
+    command: >
+      sh -c "crawler"
+    depends_on:
+      - article-web-api
+      - article-js-server
+  
+  # Web API Server
+  article-web-api:
+    image: article-web-api-image
+    container_name: article-web-api-container
+    build:
+      context: ../backend/
+      dockerfile: Dockerfile
+    ports:
+      - "8001:5000"
+    networks:
+      - my-network
+    volumes:
+      - ../logs:/app/logs
+      - ../data:/app/data
+    restart: unless-stopped
+    command: >
+      sh -c "web-api"
+
+networks:
+  my-network:
+    driver: bridge

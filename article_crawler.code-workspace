@@ -7,6 +7,9 @@
       "path": "js-server"
     },
     {
+      "path": "frontend"
+    },
+    {
       "path": "docker"
     },
     {

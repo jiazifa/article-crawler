@@ -160,7 +160,7 @@ fn load_configure(file: Option<String>) -> Config {
     // set debug to true
     builder = builder.set_default("debug", true).unwrap();
 
-    builder = builder.set_default("web.address", "0.0.0.0:8888").unwrap();
+    builder = builder.set_default("web.address", "0.0.0.0:5000").unwrap();
     builder = builder.set_default("web.compression", true).unwrap();
 
     builder = builder.set_default("log.level", "info").unwrap();
