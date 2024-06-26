@@ -1,6 +1,10 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
+import { ThemeProvider } from "@/providers/ThemeProvider";
+import AppShell from "@/components/AppShell";
+import { NavContainer } from "@/components/Nav";
+import { Routes } from "@/utils/routes";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -14,9 +18,23 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+
   return (
     <html lang="en">
-      <body className={inter.className}>{children}</body>
+      <body className={inter.className}>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
+          <AppShell
+            navigation={<NavContainer sections={Routes} />}
+          >
+            {children}
+          </AppShell>
+        </ThemeProvider>
+      </body>
     </html>
   );
 }
