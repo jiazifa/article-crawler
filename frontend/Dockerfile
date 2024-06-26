@@ -1,4 +1,4 @@
-FROM node:18-alpine AS base
+FROM node:alpine AS base
 
 # 2. Rebuild the source code only when needed
 FROM base AS builder
@@ -12,7 +12,6 @@ RUN pnpm fetch
 
 COPY . .
 # This will do the trick, use the corresponding env file for each environment.
-COPY .env.development.sample .env.production
 RUN pnpm install --offline --force && pnpm build
 
 # 3. Production image, copy all the files and run next

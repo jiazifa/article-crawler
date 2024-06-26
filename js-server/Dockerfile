@@ -1,10 +1,14 @@
-FROM node:latest
-
-COPY . /app
+FROM node:alpine
 
 WORKDIR /app
 
-RUN pnpm start
+RUN corepack enable && corepack prepare pnpm@latest --activate
+
+COPY package.json pnpm-lock.yaml* ./
+
+RUN pnpm fetch
+
+COPY . /app
 
 RUN pnpm install --frozen-lockfile --only=prod
 

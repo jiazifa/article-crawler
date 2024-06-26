@@ -43,11 +43,11 @@ services:
       - ../data:/app/data
     restart: unless-stopped
     command: >
-      sh -c "crawler"
+      sh -c "./bin/crawler"
     depends_on:
       - article-web-api
       - article-js-server
-  
+
   # Web API Server
   article-web-api:
     image: article-web-api-image
@@ -64,7 +64,7 @@ services:
       - ../data:/app/data
     restart: unless-stopped
     command: >
-      sh -c "web-api"
+      sh -c "./bin/web-server"
 
 networks:
   my-network:

@@ -32,13 +32,24 @@ RUN cargo build --release -p crawler
 RUN cargo build --release -p web-server
 
 # 最终使用 镜像 runner
-FROM alpine:latest as runner
+FROM debian:buster-slim AS runner
+
+# 安装 libssl1.1
+RUN apt-get update --allow-releaseinfo-change && apt-get install -y ca-certificates && update-ca-certificates \
+    && apt-get install -y libssl1.1
+# 创建 /bin 目录
+RUN mkdir -p /app/bin
 
 WORKDIR /app
 
 # copy build file from builder image
-COPY --from=builder /app/target/release/crawler /app/rss-crawler
-COPY --from=builder /app/target/release/web-server /app/rss-web-server
+COPY --from=builder /app/target/release/crawler /app/bin/crawler
+COPY --from=builder /app/target/release/web-server /app/bin/web-server
+
+RUN chmod +x /app/bin/*
+
+# Add bin to PATH
+ENV PATH="/app/bin:${PATH}"
 
 # copy config file
 COPY fixture /app/fixture
