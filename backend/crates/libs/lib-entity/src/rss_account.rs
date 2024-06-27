@@ -18,7 +18,7 @@ pub struct Entity;
 
 impl EntityName for Entity {
     fn table_name(&self) -> &str {
-        "ssr.customer"
+        "rss_account"
     }
     fn schema_name(&self) -> Option<&str> {
         // Some("dasv")
@@ -78,7 +78,7 @@ impl ColumnTrait for Column {
             Self::NickName => ColumnType::String(Some(100)).def().nullable(),
             Self::Email => ColumnType::String(Some(100)).def().nullable(),
             Self::Password => ColumnType::String(Some(40)).def().nullable(),
-            Self::Avatar => ColumnType::String(Some(200)).def().nullable(),
+            Self::Avatar => ColumnType::Binary(BlobSize::Medium).def().nullable(),
             Self::Birth => ColumnType::Date.def().nullable(),
             Self::Gender => ColumnType::SmallInteger.def().nullable(),
             Self::LastLoginTime => ColumnType::DateTime.def().nullable(),
@@ -94,11 +94,21 @@ impl ColumnTrait for Column {
 }
 
 #[derive(Copy, Clone, Debug, EnumIter)]
-pub enum Relation {}
+pub enum Relation {
+    Token,
+}
 
 impl RelationTrait for Relation {
     fn def(&self) -> RelationDef {
-        unimplemented!()
+        match self {
+            Self::Token => Entity::has_one(super::rss_account_token::Entity).into(),
+        }
+    }
+}
+
+impl Related<super::rss_account_token::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::Token.def()
     }
 }
 

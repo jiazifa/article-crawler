@@ -16,12 +16,12 @@ use jwt::Algorithm;
 use jwt::Validation;
 use lib_core::{
     auth::{
-        schema::{CustomerModel, QueryCustomerByIDRequest},
-        CustomerController,
+        schema::{AccountModel, QueryAccountByIDRequest},
+        AccountController,
     },
     DBConnection,
 };
-use lib_entity::rss_customer;
+use lib_entity::rss_account;
 use lib_utils::Setting;
 use serde::{Deserialize, Serialize};
 
@@ -29,22 +29,38 @@ use crate::api_error;
 use chrono::Utc;
 
 #[derive(Debug, Serialize, Deserialize)]
+/// Represents the claims of an authenticated user.
+/// 认证声明结构体
 pub struct AuthClaims {
-    // "Summer"
+    /// 令牌的发行者。它标识发行令牌的实体。
+    /// 此字段是可选的，可以包含字符串值。
     pub iss: Option<String>,
-    // "auth"
+
+    /// 令牌的主题。它表示令牌的预期接收者。
+    /// 此字段是可选的，可以包含字符串值。
     pub sub: Option<String>,
-    // users
+
+    /// 令牌的受众。它指定了令牌的预期接收者。
+    /// 此字段是可选的，可以包含字符串值的向量。
     pub aud: Option<Vec<String>>,
-    // 1600000000
+
+    /// 令牌的过期时间。它表示令牌在此时间之后不再有效。
+    /// 此字段是必需的，必须是一个表示自UNIX纪元以来的秒数的usize值。
     pub exp: usize,
-    // 1600000000
+
+    /// 令牌的生效时间。它表示令牌在此时间之前无效。
+    /// 此字段是必需的，必须是一个表示自UNIX纪元以来的秒数的usize值。
     pub nbf: usize,
-    // 1600000000
+
+    /// 令牌的发行时间。它表示令牌的发行时间。
+    /// 此字段是必需的，必须是一个表示自UNIX纪元以来的秒数的usize值。
     pub iat: usize,
-    // "token_auth"
+
+    /// 令牌的唯一标识符。它为令牌提供了一个唯一标识符。
+    /// 此字段是必需的，必须是一个字符串值。
     pub jti: String,
 }
+
 pub fn ecode_to_jwt(auth: &AuthClaims, secret: &[u8]) -> Option<String> {
     match jwt::encode(
         &jwt::Header::default(),
@@ -118,18 +134,15 @@ impl AuthClaims {
         }
     }
 
-    pub async fn get_user(
-        &self,
-        pool: &DBConnection,
-    ) -> Result<CustomerModel, api_error::APIError> {
+    pub async fn get_user(&self, pool: &DBConnection) -> Result<AccountModel, api_error::APIError> {
         let uid = self
             .jti
             .parse::<i64>()
             .map_err(|_| api_error::APIError::ErrorParams("id".to_string()))?;
-        let controller = CustomerController;
-        let req = QueryCustomerByIDRequest::new(uid);
+        let controller = AccountController;
+        let req = QueryAccountByIDRequest::new(uid);
 
-        let op_u = controller.query_customer_by_id(req, pool).await?;
+        let op_u = controller.query_account_by_id(req, pool).await?;
         match op_u {
             Some(u) => Ok(u),
             None => Err(api_error::APIError::Toast("用户不存在".to_string())),

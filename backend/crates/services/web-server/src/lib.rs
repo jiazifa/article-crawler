@@ -18,6 +18,8 @@ use tower_http::{
     trace::TraceLayer,
     validate_request::ValidateRequestHeaderLayer,
 };
+
+mod account;
 mod api_error;
 mod middlewares;
 mod response;
@@ -53,7 +55,7 @@ pub async fn build_router(setting: &Setting) -> Router {
         .allow_methods(Any)
         .allow_origin(Any);
 
-    let router = Router::new().nest("/8bd86ee64", route::build_routes());
+    let router = route::build_routes();
 
     let router = match setting.web.compression.unwrap_or(false) {
         true => {
@@ -96,5 +98,6 @@ pub async fn build_router(setting: &Setting) -> Router {
         )
         .layer(Extension(state))
         .route_with_tsr("/health/check/", get(health_check).post(health_check));
-    router.fallback(handler_404)
+    // router.fallback(handler_404)
+    router
 }

@@ -1,6 +1,10 @@
 import ky from "ky";
 
-const PREFIX = "http://localhost:10123/8bd86ee69";
+// get BASE_URL From Ent
+const BASE_URL =
+  process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:3000";
+
+const PREFIX = `${BASE_URL}`;
 const buildServerURL = (path: string): string => {
   return `${PREFIX}/${path}`;
 };
@@ -20,6 +24,7 @@ const serverAPI = ky.create({
         if (token) {
           request.headers.set("Authorization", `Bearer ${token}`);
         }
+        console.log(`[Ky]: ${request.method} ${request.url}`);
       },
     ],
   },
@@ -38,7 +43,7 @@ export type APIResponse<T> = {
   data?: T;
   context: {
     code: number;
-    msg: string;
+    message: string;
     server_at: string;
   };
 };

@@ -36,7 +36,7 @@ pub struct Web {
 impl Default for Web {
     fn default() -> Self {
         Self {
-            address: "0.0.0.0:3000".to_string(),
+            address: "0.0.0.0:9000".to_string(),
             compression: Some(true),
         }
     }
@@ -160,7 +160,7 @@ fn load_configure(file: Option<String>) -> Config {
     // set debug to true
     builder = builder.set_default("debug", true).unwrap();
 
-    builder = builder.set_default("web.address", "0.0.0.0:5000").unwrap();
+    builder = builder.set_default("web.address", "0.0.0.0:9000").unwrap();
     builder = builder.set_default("web.compression", true).unwrap();
 
     builder = builder.set_default("log.level", "info").unwrap();

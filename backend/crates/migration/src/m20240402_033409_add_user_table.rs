@@ -9,7 +9,7 @@ impl MigrationTrait for Migration {
         manager
             .create_table(
                 Table::create()
-                    .table(Alias::new("ssr.customer"))
+                    .table(Alias::new("rss_account"))
                     .if_not_exists()
                     .col(
                         ColumnDef::new(Alias::new("id"))
@@ -22,38 +22,43 @@ impl MigrationTrait for Migration {
                     .col(
                         ColumnDef::new(Alias::new("nick_name"))
                             .string_len(100)
-                            .not_null()
+                            .null()
                             .comment("昵称".to_string()),
                     )
                     .col(
                         ColumnDef::new(Alias::new("email"))
                             .string_len(100)
-                            .not_null()
+                            .null()
                             .comment("邮箱".to_string()),
                     )
                     .col(
                         ColumnDef::new(Alias::new("password"))
                             .string_len(40)
+                            .null()
                             .comment("密码".to_string()),
                     )
                     .col(
                         ColumnDef::new(Alias::new("avatar"))
-                            .string_len(200)
+                            .binary()
+                            .null()
                             .comment("头像".to_string()),
                     )
                     .col(
                         ColumnDef::new(Alias::new("birth"))
                             .date()
+                            .null()
                             .comment("出生日期".to_string()),
                     )
                     .col(
                         ColumnDef::new(Alias::new("gender"))
                             .small_integer()
+                            .null()
                             .comment("性别 1 男 2 女".to_string()),
                     )
                     .col(
                         ColumnDef::new(Alias::new("last_login_time"))
                             .date_time()
+                            .null()
                             .comment("上一次登录时间".to_string()),
                     )
                     .col(
@@ -72,7 +77,29 @@ impl MigrationTrait for Migration {
                     .to_owned(),
             )
             .await?;
-
+        // create account token table
+        manager
+            .create_table(
+                Table::create()
+                    .table(Alias::new("rss_account_token"))
+                    .if_not_exists()
+                    .col(
+                        ColumnDef::new(Alias::new("account_id"))
+                            .primary_key()
+                            .integer()
+                            .not_null()
+                            .comment("用户id".to_string()),
+                    )
+                    .col(
+                        ColumnDef::new(Alias::new("token"))
+                            .string_len(64)
+                            .null()
+                            .comment("token".to_string()),
+                    )
+                    .comment("用户token表".to_string())
+                    .to_owned(),
+            )
+            .await?;
         Ok(())
     }
 
@@ -80,7 +107,15 @@ impl MigrationTrait for Migration {
         manager
             .drop_table(
                 Table::drop()
-                    .table(Alias::new("ssr.customer"))
+                    .table(Alias::new("rss_account"))
+                    .if_exists()
+                    .to_owned(),
+            )
+            .await?;
+        manager
+            .drop_table(
+                Table::drop()
+                    .table(Alias::new("rss_account_token"))
                     .if_exists()
                     .to_owned(),
             )

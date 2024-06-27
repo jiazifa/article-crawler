@@ -2,30 +2,40 @@ use axum::{
     response::{IntoResponse, Response},
     Json,
 };
+use chrono::NaiveDateTime;
 use serde::Serialize;
 
 use crate::api_error::APIError;
 
 #[derive(Debug, Serialize)]
+pub struct APIResponseContext {
+    pub code: i32,
+    pub message: Option<String>,
+    pub server_at: NaiveDateTime,
+}
+
+#[derive(Debug, Serialize)]
 pub struct APIResponse<T: Serialize> {
-    code: i32,
     #[serde(skip_serializing_if = "Option::is_none")]
     data: Option<T>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    message: Option<String>,
+    context: APIResponseContext,
 }
 
 impl<T: Serialize> APIResponse<T> {
     pub fn new() -> Self {
-        APIResponse {
+        let context = APIResponseContext {
             code: 200_i32,
-            data: None,
             message: None,
+            server_at: chrono::Utc::now().naive_utc(),
+        };
+        APIResponse {
+            data: None,
+            context,
         }
     }
 
     pub fn with_code(mut self, code: i32) -> Self {
-        self.code = code;
+        self.context.code = code;
         self
     }
 
@@ -35,7 +45,7 @@ impl<T: Serialize> APIResponse<T> {
     }
 
     pub fn with_message(mut self, message: String) -> Self {
-        self.message = Some(message);
+        self.context.message = Some(message);
         self
     }
 

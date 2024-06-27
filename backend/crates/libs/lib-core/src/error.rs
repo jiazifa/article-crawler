@@ -1,5 +1,6 @@
 use derive_builder::UninitializedFieldError;
 use sea_orm::DbErr;
+use sqlx::error;
 use thiserror::Error;
 
 #[derive(Error, Debug)]

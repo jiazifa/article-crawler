@@ -38,7 +38,7 @@ scru128 = { workspace = true }
 uuid = { workspace = true, features = ["v4"] }
 anyhow = { workspace = true }
 derive_builder = { workspace = true }
-
+md5 = { workspace = true }
 # for test
 [dev-dependencies]
 migration = { path = "../../migration" }

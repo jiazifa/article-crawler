@@ -1,9 +1,12 @@
 import type { Metadata } from "next";
+import { Inter } from "next/font/google";
 import { ThemeProvider } from "@/providers/ThemeProvider";
 import AppShell from "@/components/AppShell";
 import { NavContainer } from "@/components/Nav";
-
 import { Routes } from "@/utils/routes";
+import { Providers } from "@/providers/session";
+
+const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
     title: "Create Next App",
@@ -18,20 +21,23 @@ export default function RootLayout({
 
     return (
         <html lang="en">
-            <body>
+            <body className={inter.className}>
                 <ThemeProvider
                     attribute="class"
                     defaultTheme="system"
                     enableSystem
                     disableTransitionOnChange
                 >
-                    <AppShell
-                        navigation={<NavContainer sections={Routes} />}
-                    >
-                        {children}
-                    </AppShell>
+                    <Providers>
+                        <AppShell
+                            navigation={<NavContainer sections={Routes} />}
+                        >
+                            {children}
+                        </AppShell>
+                    </Providers>
                 </ThemeProvider>
             </body>
         </html>
     );
 }
+

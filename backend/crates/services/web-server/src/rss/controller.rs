@@ -207,12 +207,6 @@ async fn summary_rss_link(
         }
     };
 
-    // 检查用户的 token 是否足够
-
-    if user.ai_token_amount.unwrap_or(0) < content_token_cost {
-        return Err(APIError::Toast("AI Token 不足".to_string()));
-    }
-
     let request = LinkSummaryRequest {
         link_url: req.link_url.clone(),
         content: Some(content.to_string()),

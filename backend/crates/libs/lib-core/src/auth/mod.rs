@@ -1,3 +1,3 @@
-mod customer;
+mod controller;
 pub mod schema;
-pub use customer::CustomerController;
+pub use controller::AccountController;

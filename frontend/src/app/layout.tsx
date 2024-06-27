@@ -5,6 +5,7 @@ import { ThemeProvider } from "@/providers/ThemeProvider";
 import AppShell from "@/components/AppShell";
 import { NavContainer } from "@/components/Nav";
 import { Routes } from "@/utils/routes";
+import { Providers } from "@/providers/session";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -28,11 +29,9 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <AppShell
-            navigation={<NavContainer sections={Routes} />}
-          >
+          <Providers>
             {children}
-          </AppShell>
+          </Providers>
         </ThemeProvider>
       </body>
     </html>
