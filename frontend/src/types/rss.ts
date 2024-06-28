@@ -52,7 +52,6 @@ export interface Subscription {
   last_build_date?: Date;
   accent_color?: string;
   article_count_for_this_week?: number;
-  is_completed?: boolean;
   subscribers?: number;
   subscribed_at?: Date;
   custom_title?: string;

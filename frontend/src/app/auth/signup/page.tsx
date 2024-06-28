@@ -54,10 +54,12 @@ export default function RegisterForm() {
         try {
             const respOrigin = await serverAPI.post("account/register", { json: value });
             const resp = await parserServerResponse(respOrigin);
-
-            console.log(`resp: ${JSON.stringify(resp)}`)
-            toast.success("Account created successfully")
-            // router.push(AUTHENTICATION_APP.SignIn)
+            if (resp.context.code === 200) {
+                toast.success("Account created successfully")
+                router.push(AUTHENTICATION_APP.SignIn)
+            } else {
+                toast.error(`Failed to create account: ${resp.context.message}`)
+            }
 
         } catch (error) {
             toast.error(`Failed to create account: ${error}`)

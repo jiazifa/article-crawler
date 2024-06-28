@@ -11,8 +11,7 @@ use sea_orm::FromQueryResult;
 #[builder(name = "AccountModelBuilder")]
 #[builder(build_fn(error = "ErrorInService"))]
 pub struct AccountModel {
-    #[serde(skip)]
-    pub id: i64, // 主键
+    pub id: i64,                      // 主键
     pub nick_name: Option<String>,    // 昵称
     pub email: Option<String>,        // 邮箱
     pub birth: Option<NaiveDateTime>, // 出生日期

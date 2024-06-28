@@ -19,12 +19,19 @@ import {
     FormMessage,
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
-import { z } from 'zod';
+import { string, z } from 'zod';
 import { toast } from "sonner"
 import { useForm } from "react-hook-form";
 import { AUTHENTICATION_APP, MAIN_APP } from "@/utils/routes"
 import { APIResponse, parserServerResponse, serverAPI } from "@/utils";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Account } from "@/types";
+import { signIn } from "next-auth/react";
+
+interface AccountWithToken {
+    account: Account;
+    token: string
+}
 
 const formSchema = z.object({
     email: z.string().email(),
@@ -35,6 +42,10 @@ const formSchema = z.object({
 
 export default function LoginForm() {
     const router = useRouter();
+
+    const searchParams = useSearchParams();
+    const callbackUrl = searchParams.get('callbackUrl');
+
     const form = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema),
         defaultValues: {
@@ -44,18 +55,27 @@ export default function LoginForm() {
     })
 
     const onSubmitAction = async (value: z.infer<typeof formSchema>) => {
-        try {
-            const respOrigin = await serverAPI.post("account/login", { json: value });
+        signIn('credentials', {
+            email: value.email,
+            password: value.password,
+            callbackUrl: callbackUrl ?? MAIN_APP.RssNewest
+        });
+        // try {
+        //     const respOrigin = await serverAPI.post("account/login", { json: value });
 
-            const resp = await parserServerResponse(respOrigin);
-            console.log(`resp: ${JSON.stringify(resp)}`)
-            const jwt: string = resp.data?.token;
-            localStorage.setItem("token", jwt);
-            toast.success("Account created successfully")
-            router.push(MAIN_APP.RssNewest);
-        } catch (error) {
-            toast.error(`Failed to create account: ${error}`)
-        }
+        //     const resp: APIResponse<AccountWithToken> = await parserServerResponse(respOrigin);
+        //     console.log(`resp: ${JSON.stringify(resp)}`)
+        //     const jwt = resp.data?.token;
+        //     if (jwt) {
+        //         localStorage.setItem("token", jwt);
+        //         toast.success("Account created successfully")
+        //         router.push(MAIN_APP.RssNewest);
+        //     } else {
+        //         toast.error(`Failed to login: ${resp.context.message}`)
+        //     }
+        // } catch (error) {
+        //     toast.error(`Failed to create account: ${error}`)
+        // }
     };
 
     return (
@@ -63,7 +83,7 @@ export default function LoginForm() {
             <CardHeader>
                 <CardTitle className="text-xl">登录</CardTitle>
                 <CardDescription>
-                    输入账号密码登录
+                    Enter your email and password to login
                 </CardDescription>
             </CardHeader>
             <CardContent>

@@ -39,7 +39,7 @@ pub async fn login_account(
     let conn = &app.pool;
     let account_controller = AccountController;
     let login_account = account_controller.login_account(req, conn).await?;
-
+    tracing::info!("login account: {:?}", login_account);
     let now = chrono::Utc::now();
     let one_month_after = now + chrono::Duration::days(30);
 

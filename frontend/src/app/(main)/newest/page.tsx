@@ -1,6 +1,8 @@
 'use client';
 
 import { AppTitleContainer } from "@/components/AppTitleContainer";
+import { PageContainer } from "@/components/layout/page-container";
+import { Heading } from "@/components/ui/heading";
 import { QuerySubscriptionRequest, useSubscriptionList } from "@/service/rss_service";
 import { PageRequest } from "@/types";
 import Image from "next/image";
@@ -35,8 +37,13 @@ export default function Home() {
 
     return (
         <>
-            <AppTitleContainer title="最新" />
-            {subscriptionPage && `${subscriptionPage.length} 条数据`}
+            <div className="flex-1 space-y-4 p-4 pt-6 md:p-8">
+                <div className="flex items-start justify-between">
+                    <Heading title={`Kanban`} description="Manage tasks by dnd" />
+                    {/* <NewTaskDialog /> */}
+                </div>
+            </div>
+
         </>
     );
 }

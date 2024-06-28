@@ -1,10 +1,7 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
-import { ThemeProvider } from "@/providers/ThemeProvider";
-import AppShell from "@/components/AppShell";
-import { NavContainer } from "@/components/Nav";
-import { Routes } from "@/utils/routes";
-import { Providers } from "@/providers/session";
+import Header from '@/components/layout/header';
+import Sidebar from '@/components/layout/sidebar';
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -18,26 +15,14 @@ export default function RootLayout({
 }: Readonly<{
     children: React.ReactNode;
 }>) {
-
     return (
-        <html lang="en">
-            <body className={inter.className}>
-                <ThemeProvider
-                    attribute="class"
-                    defaultTheme="system"
-                    enableSystem
-                    disableTransitionOnChange
-                >
-                    <Providers>
-                        <AppShell
-                            navigation={<NavContainer sections={Routes} />}
-                        >
-                            {children}
-                        </AppShell>
-                    </Providers>
-                </ThemeProvider>
-            </body>
-        </html>
+        <>
+            <Header />
+            <div className="flex h-screen overflow-hidden">
+                <Sidebar />
+                <main className="flex-1 overflow-hidden pt-16">{children}</main>
+            </div>
+        </>
     );
 }
 

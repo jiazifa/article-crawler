@@ -1,11 +1,17 @@
-export class Account {
-  id: number;
-  username: string;
-  email: string;
+export enum Gender {
+  MALE = 0,
+  FEMALE = 1,
+}
 
-  constructor(id: number, username: string, email: string) {
-    this.id = id;
-    this.username = username;
-    this.email = email;
-  }
+export interface Account {
+  id: number;
+  nick_name?: string;
+  email?: string;
+  birth_date?: string;
+  gender?: Gender;
+}
+
+export interface ResponseAccountAndToken {
+  account: Account;
+  token: string;
 }
