@@ -12,7 +12,7 @@ use super::schema::{
 };
 use crate::error::ErrorInService;
 use crate::DBConnection;
-use chrono::{Datelike, NaiveDateTime, Timelike};
+use chrono::{DateTime, Datelike, NaiveDateTime, Timelike};
 use lib_crawler::{try_get_all_image_from_html_content, try_get_all_text_from_html_content};
 use lib_entity::{rss_category, rss_links, rss_subscrip_count_offset, rss_subscriptions};
 use lib_utils::math::{get_page_count, get_page_offset};
@@ -36,7 +36,7 @@ impl SubscriptionController {
         let mut links: Vec<CreateOrUpdateRssLinkRequest> = Vec::new();
         let pub_date = match rss.pub_date() {
             Some(d) => match dateparser::parse(d) {
-                Ok(d) => NaiveDateTime::from_timestamp_opt(d.timestamp(), 0),
+                Ok(d) => Some(d.to_utc().naive_utc()),
                 Err(_) => None,
             },
             None => None,
@@ -62,10 +62,13 @@ impl SubscriptionController {
             if let Some(item_link) = item.link() {
                 let pub_date = match item.pub_date() {
                     Some(d) => match dateparser::parse(d) {
-                        Ok(d) => NaiveDateTime::from_timestamp_opt(d.timestamp(), 0),
-                        Err(_) => NaiveDateTime::from_timestamp_opt(current_timestamp, 0),
+                        Ok(d) => Some(d.naive_utc()), // 包装在Some中
+                        Err(_) => DateTime::from_timestamp(current_timestamp, 0)
+                            .and_then(|d| Some(d.to_utc().naive_utc())),
+                        // 修改这里，确保返回Option
                     },
-                    None => NaiveDateTime::from_timestamp_opt(current_timestamp, 0),
+                    None => DateTime::from_timestamp(current_timestamp, 0)
+                        .and_then(|d| Some(d.to_utc().naive_utc())),
                 };
                 let ext = item.extensions();
                 let mut ext_map: BTreeMap<String, Vec<rss::extension::Extension>> = BTreeMap::new();

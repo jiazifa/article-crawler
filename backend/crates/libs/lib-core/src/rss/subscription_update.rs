@@ -100,7 +100,7 @@ impl SubscritionConfigController {
             let mut interval = vec![];
             for i in 0..records.len() - 1 {
                 // 计算出时间间隔，单位为分钟
-                let time = records[i + 1].timestamp() - records[i].timestamp();
+                let time = records[i + 1].and_utc().timestamp() - records[i].and_utc().timestamp();
                 // cast time to minutes
                 let minute = time / 60;
                 interval.push(minute);
@@ -198,7 +198,8 @@ impl SubscritionConfigController {
                         if let Some(last_update_time) = r.last_build_date {
                             // 计算出时间间隔, 如果时间间隔小于频率, 则不需要更新
                             // 即: 如果时间间隔接近或者大于频率, 则需要更新
-                            let interval = now.timestamp() - last_update_time.timestamp();
+                            let interval =
+                                now.and_utc().timestamp() - last_update_time.and_utc().timestamp();
                             let minute = interval / 60;
                             if minute < (fitted_frequency * 0.9) as i64 {
                                 return false;

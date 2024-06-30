@@ -793,13 +793,16 @@ mod tests {
     #[test]
     fn test_serde() {
         let s = S {
-            time: NaiveDateTime::from_timestamp_opt(0, 0),
+            time: Some(chrono::DateTime::from_timestamp(0, 0).unwrap().naive_utc()),
         };
         let json = serde_json::to_string(&s).unwrap();
         assert_eq!(json, r#"{"time":0}"#);
 
         let s: S = serde_json::from_str(r#"{"time":0}"#).unwrap();
-        assert_eq!(s.time, NaiveDateTime::from_timestamp_opt(0, 0));
+        assert_eq!(
+            s.time,
+            Some(chrono::DateTime::from_timestamp(0, 0).unwrap().naive_utc())
+        );
 
         let s: S = serde_json::from_str(r#"{"time":null}"#).unwrap();
         assert_eq!(s.time, None);

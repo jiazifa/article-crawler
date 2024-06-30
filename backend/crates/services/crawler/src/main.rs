@@ -450,10 +450,10 @@ async fn main() -> anyhow::Result<()> {
             // compare published_at
             let a = a
                 .published_at
-                .unwrap_or_else(|| chrono::NaiveDateTime::from_timestamp_opt(0, 0).unwrap());
+                .unwrap_or_else(|| chrono::DateTime::from_timestamp(0, 0).unwrap().naive_utc());
             let b = b
                 .published_at
-                .unwrap_or_else(|| chrono::NaiveDateTime::from_timestamp_opt(0, 0).unwrap());
+                .unwrap_or_else(|| chrono::DateTime::from_timestamp(0, 0).unwrap().naive_utc());
 
             a.partial_cmp(&b).unwrap_or(std::cmp::Ordering::Equal)
         });
