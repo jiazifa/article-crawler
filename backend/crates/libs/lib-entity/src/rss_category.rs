@@ -20,7 +20,6 @@ impl EntityName for Entity {
 pub struct Model {
     #[serde(skip)]
     pub id: i64,
-    pub identifier: String,
     pub title: String,
     pub description: Option<String>,
     // 父节点 Id
@@ -37,7 +36,6 @@ pub struct Model {
 #[derive(Copy, Clone, Debug, EnumIter, DeriveColumn)]
 pub enum Column {
     Id,
-    Identifier,
     Title,
     Description,
     ParentId,
@@ -64,7 +62,6 @@ impl ColumnTrait for Column {
     fn def(&self) -> ColumnDef {
         match self {
             Self::Id => ColumnType::Integer.def(),
-            Self::Identifier => ColumnType::String(Some(32u32)).def(),
             Self::Title => ColumnType::String(Some(32u32)).def().null(),
             Self::Description => ColumnType::String(Some(255u32)).def().null(),
             Self::ParentId => ColumnType::Integer.def().null(),

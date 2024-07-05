@@ -342,28 +342,6 @@ async fn query_rss_subscriptions_with_links_by_category(
         .with_data(subscription_map_links))
 }
 
-/// 更新订阅源的订阅数
-/// 指定订阅源，增加或者减少订阅数
-async fn update_subscripter_count(
-    app: Extension<Arc<AppState>>,
-    Json(req): Json<UpdateSubscriptionCountRequest>,
-) -> Result<APIResponse<()>, APIError> {
-    let conn = &app.pool;
-    match SubscriptionController
-        .update_subscriptor_count(req, conn)
-        .await
-        .map_err(|e| {
-            tracing::error!("update_subscripter_count error:{}", e);
-            e
-        }) {
-        Ok(_) => Ok(APIResponse::<()>::new().with_code(200_i32)),
-        Err(e) => {
-            tracing::error!("update_subscripter_count error:{}", e);
-            Err(APIError::Toast("更新订阅数失败".to_string()))
-        }
-    }
-}
-
 pub(crate) fn build_routes() -> axum::Router {
     Router::new()
         // 订阅源
@@ -377,11 +355,6 @@ pub(crate) fn build_routes() -> axum::Router {
         .route_with_tsr(
             "/subscription/query_by_category_with_links",
             post(query_rss_subscriptions_with_links_by_category),
-        )
-        // 修改订阅源的订阅人数
-        .route_with_tsr(
-            "/subscription/update_subscripter_count",
-            post(update_subscripter_count),
         )
         // 分类更新
         .route_with_tsr("/category/update", post(update_category))

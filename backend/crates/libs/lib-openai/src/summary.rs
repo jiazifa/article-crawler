@@ -110,7 +110,7 @@ impl<C: Config> AISummaryController<C> {
                                 async_openai::types::ChatCompletionRequestMessageContentPart::Text(txt) => {
                                     content.push_str(txt.text.as_str());
                                 },
-                                async_openai::types::ChatCompletionRequestMessageContentPart::Image(_) => {
+                                async_openai::types::ChatCompletionRequestMessageContentPart::ImageUrl(_) => {
                                     // ignore
                                 },
                             }
@@ -135,8 +135,9 @@ impl<C: Config> AISummaryController<C> {
                     num_tokens += bpe
                         .encode_with_special_tokens(&msg.content.clone().unwrap_or_default())
                         .len() as i32;
-                    num_tokens +=
-                        bpe.encode_with_special_tokens(&msg.role.to_string()).len() as i32;
+                    if let Some(name) = &msg.name {
+                        num_tokens += bpe.encode_with_special_tokens(name).len() as i32;
+                    }
                 }
                 ChatCompletionRequestMessage::Function(msg) => {
                     num_tokens += tokens_per_message;
@@ -270,7 +271,6 @@ mod test {
                 content: async_openai::types::ChatCompletionRequestUserMessageContent::Text(
                     "hello word".to_string(),
                 ),
-                role: Role::User,
                 name: None,
             },
         )];
@@ -289,7 +289,6 @@ mod test {
                 content: async_openai::types::ChatCompletionRequestUserMessageContent::Text(
                     "hello word".to_string(),
                 ),
-                role: Role::User,
                 name: None,
             },
         )];
@@ -304,7 +303,6 @@ mod test {
                     content: async_openai::types::ChatCompletionRequestUserMessageContent::Text(
                         "hello word".to_string(),
                     ),
-                    role: Role::User,
                     name: None,
                 },
             ));
@@ -318,7 +316,6 @@ mod test {
                     content: async_openai::types::ChatCompletionRequestUserMessageContent::Text(
                         "hello word".to_string(),
                     ),
-                    role: Role::User,
                     name: None,
                 },
             ));

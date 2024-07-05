@@ -14,7 +14,7 @@ use crate::error::ErrorInService;
 use crate::DBConnection;
 use chrono::{DateTime, Datelike, NaiveDateTime, Timelike};
 use lib_crawler::{try_get_all_image_from_html_content, try_get_all_text_from_html_content};
-use lib_entity::{rss_category, rss_links, rss_subscrip_count_offset, rss_subscriptions};
+use lib_entity::{rss_category, rss_links, rss_subscriptions};
 use lib_utils::math::{get_page_count, get_page_offset};
 use sea_orm::sea_query::{Expr, IntoCondition};
 use sea_orm::DbBackend;
@@ -235,8 +235,7 @@ impl SubscriptionController {
                     })
                     .into(),
             )
-            .left_join(rss_category::Entity)
-            .left_join(rss_subscrip_count_offset::Entity);
+            .left_join(rss_category::Entity);
         // 查询 `SubscriptionModel` 的所有字段
         select = select
             .select_only()
@@ -256,10 +255,6 @@ impl SubscriptionController {
                 rss_subscriptions::Column::LastBuildDate,
             ])
             .group_by(rss_subscriptions::Column::Identifier)
-            .column_as(
-                Expr::col(rss_subscrip_count_offset::Column::Offset).if_null(0),
-                "subscribers",
-            )
             .column_as(rss_subscriptions::Column::CategoryId, "category_id")
             .column_as(Expr::cust("''"), "accent_color")
             .column_as(
@@ -443,38 +438,6 @@ impl SubscriptionController {
             .collect();
         Ok(result)
     }
-
-    pub async fn update_subscriptor_count(
-        &self,
-        req: UpdateSubscriptionCountRequest,
-        conn: &DBConnection,
-    ) -> Result<(), ErrorInService> {
-        let subscription = rss_subscrip_count_offset::Entity::find()
-            .filter(rss_subscrip_count_offset::Column::SubscriptionId.eq(req.subscription_id))
-            .one(conn)
-            .await
-            .map_err(ErrorInService::DBError)?;
-        let temp_offset = match subscription.clone() {
-            Some(m) => m.offset + req.offset,
-            None => req.offset,
-        };
-        match subscription {
-            Some(m) => {
-                let mut new_model = m.into_active_model();
-                new_model.offset = Set(temp_offset);
-                new_model.update(conn).await?;
-            }
-            None => {
-                let new_model = rss_subscrip_count_offset::ActiveModel {
-                    subscription_id: Set(req.subscription_id),
-                    offset: Set(temp_offset),
-                };
-                new_model.insert(conn).await?;
-            }
-        };
-
-        Ok(())
-    }
 }
 
 #[cfg(test)]
@@ -546,21 +509,5 @@ mod tests {
             .unwrap();
         let res = controller.query_subscription(req, &conn).await.unwrap();
         assert_eq!(res.data.len(), 1);
-    }
-
-    #[tokio::test]
-    // test subscription offset
-    async fn test_subscription_offset() {
-        let base_url =
-            std::env::var("DATABASE_URL").unwrap_or_else(|_| "sqlite::memory:?mode=rwc".to_owned());
-        let conn = crate::get_db_conn(base_url).await;
-        Migrator::up(&conn, None).await.unwrap();
-
-        let offset = rss_subscrip_count_offset::ActiveModel {
-            subscription_id: Set(11),
-            offset: Set(1),
-        };
-        let updated = offset.insert(&conn).await.unwrap();
-        assert_eq!(updated.subscription_id, 11);
     }
 }

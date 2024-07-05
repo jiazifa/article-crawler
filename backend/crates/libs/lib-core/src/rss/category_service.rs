@@ -19,10 +19,8 @@ impl CategoryController {
         req: CreateOrUpdateCategoryRequest,
         conn: &DBConnection,
     ) -> Result<schema::CategoryModel, ErrorInService> {
-        let query = match req.identifier.clone() {
-            Some(idf) => {
-                rss_category::Entity::find().filter(rss_category::Column::Identifier.eq(idf))
-            }
+        let query = match req.id.clone() {
+            Some(idf) => rss_category::Entity::find().filter(rss_category::Column::Id.eq(idf)),
             None => rss_category::Entity::find()
                 .filter(rss_category::Column::Title.eq(req.title.clone())),
         };
@@ -32,7 +30,6 @@ impl CategoryController {
         let mut new_model = match category {
             Some(m) => m.into_active_model(),
             None => rss_category::ActiveModel {
-                identifier: Set(uuid::Uuid::new_v4().simple().to_string()),
                 ..Default::default()
             },
         };
@@ -100,10 +97,10 @@ impl CategoryController {
                 .join(",");
             let subscription_raw_sql = format!(
                 r#"
-                SELECT id, identifier, category_id, logo
+                SELECT id,  category_id, logo
                 FROM (
                     SELECT
-                    s.id AS id, s.title AS title, s.identifier AS identifier,
+                    s.id AS id, s.title AS title, 
                     s.category_id AS category_id, s.logo AS logo,
                     ROW_NUMBER() OVER (PARTITION BY s.category_id ORDER BY s.sort_order DESC) AS sn
                     FROM rss_subscriptions s
@@ -184,7 +181,7 @@ mod tests {
         let contoller = CategoryController;
 
         let req = CreateOrUpdateCategoryRequest {
-            identifier: None,
+            id: None,
             parent_id: None,
             title: "test".to_owned(),
             description: None,
@@ -194,7 +191,7 @@ mod tests {
         assert_eq!(res.title, "test");
 
         let req = CreateOrUpdateCategoryRequest {
-            identifier: Some(res.identifier),
+            id: Some(res.identifier),
             parent_id: None,
             title: "test_updated".to_owned(),
             description: None,
@@ -213,7 +210,7 @@ mod tests {
 
         let contoller = CategoryController;
         let req = CreateOrUpdateCategoryRequest {
-            identifier: None,
+            id: None,
             parent_id: None,
             title: "test".to_owned(),
             description: None,

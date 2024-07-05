@@ -431,7 +431,7 @@ impl From<rss_category::Model> for CategoryModel {
 #[builder(derive(Debug))]
 #[builder(build_fn(error = "ErrorInService"))]
 pub struct CreateOrUpdateCategoryRequest {
-    pub identifier: Option<String>,
+    pub id: Option<i64>,
     // 标题
     pub title: String,
     // 描述

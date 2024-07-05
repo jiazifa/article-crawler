@@ -20,12 +20,8 @@ impl EntityName for Entity {
 pub struct Model {
     #[serde(skip)]
     pub id: i64,
-    // 唯一标识
-    pub identifier: String,
     // 标题
     pub title: String,
-    // 订阅源
-    pub subscrption_id: i64,
     // 链接
     pub link: String,
     // 描述(可能包含 html)
@@ -33,9 +29,11 @@ pub struct Model {
     // 纯文本描述
     pub desc_pure_txt: Option<String>,
     // 图片 , 用于显示链接的图片
-    pub images: Option<String>,
+    pub images: Option<Json>,
     // 作者
-    pub authors_json: Option<String>,
+    pub authors: Option<Json>,
+    // tags array of string
+    pub tags: Option<Json>,
     // 发布时间
     #[serde(serialize_with = "to_milli_tsopt")]
     pub published_at: Option<NaiveDateTime>,
@@ -52,17 +50,16 @@ pub struct Model {
 #[derive(Copy, Clone, Debug, EnumIter, DeriveColumn)]
 pub enum Column {
     Id,
-    Identifier,
     Title,
-    SubscrptionId,
     Link,
     Description,
     DescPureTxt,
-    AuthorsJson,
+    Images,
+    Authors,
+    Tags,
     PublishedAt,
     CreatedAt,
     UpdatedAt,
-    Images,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DerivePrimaryKey)]
@@ -82,12 +79,14 @@ impl ColumnTrait for Column {
     fn def(&self) -> ColumnDef {
         match self {
             Self::Id => ColumnType::Integer.def(),
-            Self::Identifier => ColumnType::String(Some(32u32)).def(),
             Self::Title => ColumnType::String(Some(255u32)).def().nullable(),
-            Self::SubscrptionId => ColumnType::Integer.def(),
             Self::Description => ColumnType::Text.def().nullable(),
             Self::DescPureTxt => ColumnType::Text.def().nullable(),
             Self::Images => ColumnType::Array(RcOrArc::new(ColumnType::Text))
+                .def()
+                .nullable(),
+            Self::Authors => ColumnType::Text.def().nullable(),
+            Self::Tags => ColumnType::Array(RcOrArc::new(ColumnType::String(Some(64u32))))
                 .def()
                 .nullable(),
             Self::Link => ColumnType::Text.def(),
@@ -98,7 +97,6 @@ impl ColumnTrait for Column {
             Self::UpdatedAt => ColumnType::DateTime
                 .def()
                 .default(Expr::current_timestamp()),
-            Self::AuthorsJson => ColumnType::Text.def().nullable(),
         }
     }
 }
@@ -113,10 +111,7 @@ pub enum Relation {
 impl RelationTrait for Relation {
     fn def(&self) -> RelationDef {
         match self {
-            Self::Subscrption => Entity::belongs_to(super::rss_subscriptions::Entity)
-                .from(Column::SubscrptionId)
-                .to(super::rss_subscriptions::Column::Id)
-                .into(),
+            Self::Subscrption => Entity::has_many(super::rss_subscriptions::Entity).into(),
             Self::Summary => Entity::has_one(super::rss_link_summary::Entity).into(),
             Self::MindMap => Entity::has_one(super::rss_link_mindmap::Entity).into(),
         }
@@ -125,7 +120,7 @@ impl RelationTrait for Relation {
 
 impl Related<super::rss_subscriptions::Entity> for Entity {
     fn to() -> RelationDef {
-        Relation::Subscrption.def()
+        super::rss_links_subscriptions::Relation::Subscription.def()
     }
 }
 

@@ -20,8 +20,6 @@ impl EntityName for Entity {
 pub struct Model {
     #[serde(skip)]
     pub id: i64,
-    // 唯一标识
-    pub identifier: String,
     // 标题
     pub title: String,
     // 描述
@@ -61,7 +59,6 @@ pub struct Model {
 #[derive(Copy, Clone, Debug, EnumIter, DeriveColumn)]
 pub enum Column {
     Id,
-    Identifier,
     Title,
     Description,
     Link,
@@ -95,7 +92,6 @@ impl ColumnTrait for Column {
     fn def(&self) -> ColumnDef {
         match self {
             Self::Id => ColumnType::Integer.def(),
-            Self::Identifier => ColumnType::String(Some(32u32)).def(),
             Self::Title => ColumnType::String(Some(255u32)).def().nullable(),
             Self::Description => ColumnType::Text.def().nullable(),
             Self::Link => ColumnType::Text.def().nullable(),
@@ -122,39 +118,26 @@ impl ColumnTrait for Column {
 pub enum Relation {
     Category,
     Links,
-    SubscriptorOffset,
 }
 
 impl RelationTrait for Relation {
     fn def(&self) -> RelationDef {
         match self {
-            Self::Category => Entity::belongs_to(super::rss_category::Entity)
-                .from(Column::CategoryId)
-                .to(super::rss_category::Column::Id)
-                .into(),
+            Self::Category => Entity::has_many(super::rss_category::Entity).into(),
             Self::Links => Entity::has_many(super::rss_links::Entity).into(),
-            Self::SubscriptorOffset => {
-                Entity::has_one(super::rss_subscrip_count_offset::Entity).into()
-            }
         }
     }
 }
 
 impl Related<super::rss_category::Entity> for Entity {
     fn to() -> RelationDef {
-        Relation::Category.def()
+        super::rss_subscriptions_category::Relation::Category.def()
     }
 }
 
 impl Related<super::rss_links::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::Links.def()
-    }
-}
-
-impl Related<super::rss_subscrip_count_offset::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::SubscriptorOffset.def()
     }
 }
 

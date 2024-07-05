@@ -1,17 +1,24 @@
 'use client';
 
 import { AUTHENTICATION_APP, MAIN_APP } from "@/utils/routes";
-import { getServerSession } from "next-auth";
+import { useSession } from "next-auth/react";
 import { useRouter } from 'next/navigation';
+import { useEffect } from "react";
 
 export default function Home() {
   const router = useRouter();
-  const token_storage = localStorage.getItem("token");
-  const no_token = !token_storage;
-  if (no_token) {
-    router.push(AUTHENTICATION_APP.SignIn)
-  } else {
-    router.push(MAIN_APP.RssNewest)
-  }
+  const { data: session, status } = useSession();
+
+  useEffect(() => {
+    async function checkSession() {
+      if (session?.user === undefined) {
+        router.push(AUTHENTICATION_APP.SignIn);
+      } else {
+        router.push(MAIN_APP.RssNewest);
+      }
+    }
+    checkSession();
+  }, [router, session?.user, status]);
+
   return null;
 }

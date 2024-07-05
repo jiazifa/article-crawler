@@ -1,9 +1,7 @@
 'use client';
 
-import { AppTitleContainer } from "@/components/AppTitleContainer";
-import { PageContainer } from "@/components/layout/page-container";
 import { Heading } from "@/components/ui/heading";
-import { QuerySubscriptionRequest, useSubscriptionList } from "@/service/rss_service";
+import { QuerySubscriptionRequest, useSubscriptionList } from "@/features/rss/service";
 import { PageRequest } from "@/types";
 import Image from "next/image";
 import { useState } from "react";
