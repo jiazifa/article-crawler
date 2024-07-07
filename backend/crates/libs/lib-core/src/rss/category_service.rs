@@ -97,7 +97,7 @@ impl CategoryController {
                 .join(",");
             let subscription_raw_sql = format!(
                 r#"
-                SELECT id,  category_id, logo
+                SELECT id, category_id, logo
                 FROM (
                     SELECT
                     s.id AS id, s.title AS title, 
@@ -120,10 +120,6 @@ impl CategoryController {
             let ori_subscription_models = lib_entity::rss_subscriptions::Entity::find()
                 .select_only()
                 .column_as(lib_entity::rss_subscriptions::Column::Id, "id")
-                .column_as(
-                    lib_entity::rss_subscriptions::Column::Identifier,
-                    "identifier",
-                )
                 .column_as(
                     lib_entity::rss_subscriptions::Column::CategoryId,
                     "category_id",
@@ -191,7 +187,7 @@ mod tests {
         assert_eq!(res.title, "test");
 
         let req = CreateOrUpdateCategoryRequest {
-            id: Some(res.identifier),
+            id: Some(res.id),
             parent_id: None,
             title: "test_updated".to_owned(),
             description: None,

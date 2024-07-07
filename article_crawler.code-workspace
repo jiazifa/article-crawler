@@ -1,6 +1,5 @@
 {
   "folders": [
-    { "path": "python-server" },
     {
       "path": "backend"
     },

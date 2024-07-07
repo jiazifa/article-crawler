@@ -4,14 +4,14 @@ use crate::common_schema::{PageRequest, PageRequestBuilder, PageResponse};
 use crate::rss::link_service::LinkController;
 
 use super::schema::{
-    self, CreateOrUpdateRssLinkRequest, CreateOrUpdateRssLinkRequestBuilder,
-    CreateOrUpdateSubscriptionRequest, CreateOrUpdateSubscriptionRequestBuilder,
+    self, Author, CreateOrUpdateRssLinkRequest, CreateOrUpdateRssLinkRequestBuilder,
+    CreateOrUpdateSubscriptionRequest, CreateOrUpdateSubscriptionRequestBuilder, Image,
     QueryPreferUpdateSubscriptionRequest, QueryRssLinkRequestBuilder, QuerySubscriptionRequest,
     QuerySubscriptionRequestBuilder, QuerySubscriptionsWithLinksRequest, SubscriptionModel,
     SubscriptionWithLinksResp, UpdateSubscriptionCountRequest,
 };
 use crate::error::ErrorInService;
-use crate::DBConnection;
+use crate::{auth, DBConnection};
 use chrono::{DateTime, Datelike, NaiveDateTime, Timelike};
 use lib_crawler::{try_get_all_image_from_html_content, try_get_all_text_from_html_content};
 use lib_entity::{rss_category, rss_links, rss_subscriptions};
@@ -137,10 +137,13 @@ impl SubscriptionController {
                 }
 
                 if let Some(value) = images_json {
-                    link_req.images_json(value);
+                    let images: Vec<Image> =
+                        serde_json::from_str::<Vec<Image>>(&value).unwrap_or_default();
+                    link_req.images(images.iter().map(|i| i.clone()).collect::<Vec<_>>());
                 }
                 if let Some(value) = authors_json {
-                    link_req.authors_json(value);
+                    let authors = serde_json::from_str::<Vec<Author>>(&value).unwrap_or_default();
+                    link_req.authors(authors.iter().map(|a| a.clone()).collect::<Vec<_>>());
                 }
                 if let Some(value) = pub_date {
                     link_req.published_at(value);
@@ -164,10 +167,11 @@ impl SubscriptionController {
         &self,
         req: CreateOrUpdateSubscriptionRequest,
         conn: &DBConnection,
-    ) -> Result<(bool, String), ErrorInService> {
-        let query = match req.identifier.clone() {
-            Some(id) => rss_subscriptions::Entity::find()
-                .filter(rss_subscriptions::Column::Identifier.eq(id)),
+    ) -> Result<(bool, i64), ErrorInService> {
+        let query = match req.id.clone() {
+            Some(id) => {
+                rss_subscriptions::Entity::find().filter(rss_subscriptions::Column::Id.eq(id))
+            }
             None => rss_subscriptions::Entity::find()
                 .filter(rss_subscriptions::Column::Link.eq(req.link.clone()))
                 .filter(rss_subscriptions::Column::CategoryId.eq(req.category_id)),
@@ -177,7 +181,6 @@ impl SubscriptionController {
         let mut new_model = match subscription {
             Some(m) => m.into_active_model(),
             None => rss_subscriptions::ActiveModel {
-                identifier: Set(uuid::Uuid::new_v4().simple().to_string()),
                 ..Default::default()
             },
         };
@@ -200,7 +203,7 @@ impl SubscriptionController {
         };
         let is_update = prefer_update;
 
-        Ok((is_update, updated.identifier))
+        Ok((is_update, updated.id))
     }
 
     pub async fn query_subscription(
@@ -242,7 +245,6 @@ impl SubscriptionController {
             .distinct()
             .columns([
                 rss_subscriptions::Column::Id,
-                rss_subscriptions::Column::Identifier,
                 rss_subscriptions::Column::Title,
                 rss_subscriptions::Column::Description,
                 rss_subscriptions::Column::Link,
@@ -254,7 +256,7 @@ impl SubscriptionController {
                 rss_subscriptions::Column::Rating,
                 rss_subscriptions::Column::LastBuildDate,
             ])
-            .group_by(rss_subscriptions::Column::Identifier)
+            .group_by(rss_subscriptions::Column::Id)
             .column_as(rss_subscriptions::Column::CategoryId, "category_id")
             .column_as(Expr::cust("''"), "accent_color")
             .column_as(
@@ -277,14 +279,6 @@ impl SubscriptionController {
                 // 去重后查询
                 let ids_set: HashSet<i64> = ids.iter().cloned().collect();
                 select = select.filter(rss_subscriptions::Column::Id.is_in(ids_set.clone()))
-            }
-        }
-        if let Some(idfs) = &req.idfs {
-            if !idfs.is_empty() {
-                // 去重后查询
-                let idfs_set: HashSet<String> = idfs.iter().cloned().collect();
-                select =
-                    select.filter(rss_subscriptions::Column::Identifier.is_in(idfs_set.clone()))
             }
         }
 
@@ -485,12 +479,10 @@ mod tests {
             .language("test".to_string())
             .build()
             .unwrap();
-        let (is_update, identifier) = controller.insert_subscription(req, &conn).await.unwrap();
+        let (is_update, id) = controller.insert_subscription(req, &conn).await.unwrap();
         assert!(!is_update);
-        assert!(!identifier.is_empty());
 
         let req = CreateOrUpdateSubscriptionRequestBuilder::default()
-            .identifier(identifier)
             .title("updated".to_string())
             .description("updated".to_string())
             .category_id(category.id)
@@ -498,13 +490,12 @@ mod tests {
             .site_link("updated".to_string())
             .build()
             .unwrap();
-        let (is_update, identifier) = controller.insert_subscription(req, &conn).await.unwrap();
+        let (is_update, id) = controller.insert_subscription(req, &conn).await.unwrap();
         assert!(is_update);
-        assert!(!identifier.is_empty());
 
         // 测试查询订阅源
         let req = QuerySubscriptionRequestBuilder::default()
-            .idfs(vec![identifier.clone()])
+            .ids(vec![id.clone()])
             .build()
             .unwrap();
         let res = controller.query_subscription(req, &conn).await.unwrap();

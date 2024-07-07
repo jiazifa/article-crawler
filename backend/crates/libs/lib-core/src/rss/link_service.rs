@@ -21,8 +21,8 @@ impl LinkController {
         conn: &DBConnection,
     ) -> Result<(bool, rss_links::Model), ErrorInService> {
         // 构建查找条件
-        let query = match req.identifier.clone() {
-            Some(idf) => rss_links::Entity::find().filter(rss_links::Column::Identifier.eq(idf)),
+        let query = match req.id.clone() {
+            Some(idf) => rss_links::Entity::find().filter(rss_links::Column::Id.eq(idf)),
             None => rss_links::Entity::find()
                 .filter(rss_links::Column::Link.eq(req.link.clone()))
                 .filter(rss_links::Column::SubscrptionId.eq(req.subscrption_id)),
@@ -36,7 +36,6 @@ impl LinkController {
         let mut new_model = match link {
             Some(m) => m.into_active_model(),
             None => rss_links::ActiveModel {
-                identifier: Set(uuid::Uuid::new_v4().simple().to_string()),
                 ..Default::default()
             },
         };
@@ -44,11 +43,14 @@ impl LinkController {
         if let Some(subscrption_id) = &req.subscrption_id {
             new_model.subscrption_id = Set(*subscrption_id);
         }
+        let image_value = serde_json::to_value(req.images.clone()).unwrap();
+        let author_value = serde_json::to_value(req.authors.clone()).unwrap();
         new_model.link = Set(req.link.clone());
         new_model.description = Set(req.description.clone());
         new_model.desc_pure_txt = Set(req.desc_pure_txt.clone());
-        new_model.images = Set(req.images_json.clone());
-        new_model.authors_json = Set(req.authors_json.clone());
+        // images is serder_json value. vec of Image
+        new_model.images = Set(Some(image_value));
+        new_model.authors = Set(Some(author_value));
         new_model.published_at = Set(req.published_at);
 
         // 执行更新或者创建
@@ -125,7 +127,6 @@ impl QueryRssLinkRequest {
             .select_only()
             .columns(vec![
                 rss_links::Column::Id,
-                rss_links::Column::Identifier,
                 rss_links::Column::Title,
                 rss_links::Column::Link,
                 rss_links::Column::Description,
@@ -136,16 +137,11 @@ impl QueryRssLinkRequest {
             .column_as(rss_subscriptions::Column::Id, "subscrption_id")
             .column_as(rss_links::Column::Images, "images")
             // authors 是 authors_json 的解析结果
-            .column_as(rss_links::Column::AuthorsJson, "authors");
+            .column_as(rss_links::Column::Authors, "authors");
 
         if let Some(ids) = &self.ids {
             if !ids.is_empty() {
                 select = select.filter(rss_links::Column::Id.is_in(ids.clone()))
-            }
-        }
-        if let Some(idfs) = &self.idfs {
-            if !idfs.is_empty() {
-                select = select.filter(rss_links::Column::Identifier.is_in(idfs.clone()))
             }
         }
         if let Some(title) = &self.title {
@@ -191,23 +187,23 @@ mod tests {
                 .title("test".to_owned())
                 .link("https://www.baidu.com".to_owned())
                 .subscrption_id(11)
-                .images_json("[]".to_owned())
-                .authors_json("[]".to_owned())
+                .images(vec![])
+                .authors(vec![])
                 .published_at(current_date)
                 .build()
                 .unwrap();
             let res = controller.insert_link(req, &conn).await.unwrap();
             assert_eq!(res.1.title, "test");
 
-            let idf = res.1.identifier.clone();
+            let id = res.1.id.clone();
 
             let req = CreateOrUpdateRssLinkRequestBuilder::default()
-                .identifier(idf.clone())
+                .id(id)
                 .title("test_updated".to_owned())
                 .link("https://www.baidu.com".to_owned())
                 .subscrption_id(11)
-                .images_json("[]".to_owned())
-                .authors_json("[]".to_owned())
+                .images(vec![])
+                .authors(vec![])
                 .published_at(current_date)
                 .build()
                 .unwrap();

@@ -122,7 +122,6 @@ impl Runner {
                             lib_core::rss::schema::CreateOrUpdateRssLinkRequestBuilder::default();
                                 update_link_req_builder.subscrption_id(link.subscrption_id);
                                 update_link_req_builder.link(link.link);
-                                update_link_req_builder.identifier(link.identifier);
                                 update_link_req_builder.title(link.title);
                                 if link.content.is_none() {
                                     if let Some(content) =
@@ -149,9 +148,7 @@ impl Runner {
                                         height: None,
                                         description: None,
                                     };
-                                    if let Ok(image_json) = serde_json::to_string(&image) {
-                                        update_link_req_builder.images_json(image_json);
-                                    }
+                                    update_link_req_builder.images(vec![image]);
                                 }
                                 // 如果没有 Description， 那么尝试使用 content
 
@@ -256,7 +253,6 @@ impl Runner {
                 };
                 // 首先更新订阅源部分，更新订阅源的最后更新时间
                 let mut update_subscription_req = rss_subscription;
-                update_subscription_req.identifier = Some(subscription.identifier.clone().unwrap());
                 update_subscription_req.last_build_date = Some(chrono::Utc::now().naive_utc());
                 update_subscription_req.category_id = subscription.category_id;
                 update_subscription_req.language = language;

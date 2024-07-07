@@ -146,14 +146,12 @@ pub struct Image {
 pub struct LinkModel {
     // id
     pub id: i64,
-    // 唯一标识
-    pub identifier: String,
     // 标题
     pub title: String,
-    // 订阅源
-    pub subscrption_id: i64,
     // 链接
     pub link: String,
+    // 订阅源id
+    pub subscrption_id: i64,
     // 内容(可能为空，包含 html)
     #[builder(default)]
     pub content: Option<String>,
@@ -174,20 +172,30 @@ pub struct LinkModel {
 
 impl From<lib_entity::rss_links::Model> for LinkModel {
     fn from(value: lib_entity::rss_links::Model) -> Self {
-        let authors: Option<Vec<Author>> =
-            serde_json::from_str(&value.authors_json.unwrap_or("".to_string())).unwrap_or(None);
-        let images: Option<Vec<Image>> =
-            serde_json::from_str(&value.images.unwrap_or("".to_string())).unwrap_or(None);
+        let authors: Option<Vec<Author>> = serde_json::from_str(
+            &value
+                .authors
+                .unwrap_or(sea_orm::JsonValue::String("".to_string()))
+                .to_string(),
+        )
+        .unwrap_or(None);
+        let images: Option<Vec<Image>> = serde_json::from_str(
+            &value
+                .images
+                .unwrap_or(sea_orm::JsonValue::String("".to_string()))
+                .to_string(),
+        )
+        .unwrap_or(None);
         let description = value.description.unwrap_or("".to_string());
         let text_desc = value.desc_pure_txt.unwrap_or("".to_string());
+        let subscription_id = value.subscrption_id;
         Self {
             id: value.id,
-            identifier: value.identifier,
             title: value.title,
-            subscrption_id: value.subscrption_id,
             link: value.link,
             content: Some(description),
             description: Some(text_desc),
+            subscrption_id: subscription_id,
             published_at: value.published_at,
             authors,
             images,
@@ -215,9 +223,7 @@ impl FromQueryResult for LinkModel {
         let mut model_builder = LinkModelBuilder::default();
         let model = model_builder
             .id(res.try_get(pre, "id")?)
-            .identifier(res.try_get(pre, "identifier")?)
             .title(res.try_get(pre, "title")?)
-            .subscrption_id(res.try_get(pre, "subscrption_id")?)
             .link(res.try_get(pre, "link")?)
             .content(Some(description))
             .description(Some(text_desc))
@@ -352,8 +358,6 @@ impl From<lib_entity::rss_link_mindmap::Model> for LinkMindMapModel {
 pub struct CategoryModel {
     // id
     pub id: i64,
-    // 唯一标识
-    pub identifier: String,
     // 标题
     pub title: String,
     // 描述
@@ -386,7 +390,6 @@ impl FromQueryResult for CategoryModel {
 
         let model = model_builder
             .id(m_id)
-            .identifier(res.try_get(pre, "identifier")?)
             .title(res.try_get(pre, "title")?)
             .description(res.try_get(pre, "description").unwrap_or(None))
             .parent_id(res.try_get(pre, "parent_id").unwrap_or(None))
@@ -415,7 +418,6 @@ impl From<rss_category::Model> for CategoryModel {
     fn from(value: rss_category::Model) -> Self {
         Self {
             id: value.id,
-            identifier: value.identifier,
             title: value.title,
             description: value.description,
             parent_id: value.parent_id,
@@ -471,8 +473,6 @@ pub struct QueryCategoryRequest {
 #[builder(build_fn(error = "ErrorInService"))]
 pub struct CreateOrUpdateSubscriptionRequest {
     pub id: Option<i64>,
-    // 唯一标识
-    pub identifier: Option<String>,
     // 标题
     pub title: String,
     // 描述
@@ -507,7 +507,6 @@ impl From<lib_entity::rss_subscriptions::Model> for CreateOrUpdateSubscriptionRe
     fn from(value: lib_entity::rss_subscriptions::Model) -> Self {
         let mut req = CreateOrUpdateSubscriptionRequestBuilder::default();
 
-        req.identifier(value.identifier);
         req.id(value.id);
         req.title(value.title);
         if let Some(value) = value.description {
@@ -702,7 +701,7 @@ pub struct UpdateSubscriptionCountRequest {
 #[builder(build_fn(error = "ErrorInService"))]
 pub struct CreateOrUpdateRssLinkRequest {
     // 唯一标识
-    pub identifier: Option<String>,
+    pub id: Option<i64>,
     // 标题
     pub title: String,
     // 订阅源
@@ -716,9 +715,9 @@ pub struct CreateOrUpdateRssLinkRequest {
     // 发布时间
     pub published_at: Option<NaiveDateTime>,
     // 作者
-    pub authors_json: Option<String>,
+    pub authors: Option<Vec<Author>>,
     // 图片
-    pub images_json: Option<String>,
+    pub images: Option<Vec<Image>>,
 }
 
 // 构建查找链接的请求
@@ -729,8 +728,6 @@ pub struct CreateOrUpdateRssLinkRequest {
 pub struct QueryRssLinkRequest {
     // 唯一标识
     pub ids: Option<Vec<i64>>,
-    // 唯一标识
-    pub idfs: Option<Vec<String>>,
     // 标题
     pub title: Option<String>,
     // 订阅源 ids

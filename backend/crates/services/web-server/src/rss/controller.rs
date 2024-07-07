@@ -79,13 +79,13 @@ async fn query_rss_subscription_by_options(
 async fn update_rss_subscription(
     app: Extension<Arc<AppState>>,
     Json(req): Json<CreateOrUpdateSubscriptionRequest>,
-) -> Result<APIResponse<String>, APIError> {
+) -> Result<APIResponse<i64>, APIError> {
     let conn = &app.pool;
 
     let (_, updated) = SubscriptionController
         .insert_subscription(req, conn)
         .await?;
-    Ok(APIResponse::<String>::new()
+    Ok(APIResponse::<i64>::new()
         .with_code(200_i32)
         .with_data(updated))
 }

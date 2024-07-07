@@ -426,7 +426,7 @@ mod tests {
             .await
             .unwrap();
         let query_subscription_req = crate::rss::schema::QuerySubscriptionRequestBuilder::default()
-            .idfs(vec![sub_model.1])
+            .ids(vec![sub_model.1])
             .build()
             .unwrap();
         let query_subscription_res = subs_controller
