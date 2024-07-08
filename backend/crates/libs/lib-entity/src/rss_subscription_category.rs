@@ -8,7 +8,7 @@ pub struct Entity;
 
 impl EntityName for Entity {
     fn table_name(&self) -> &str {
-        "rss_links_subscriptions"
+        "rss_subscription_category"
     }
     fn schema_name(&self) -> Option<&str> {
         // Some("dasv")
@@ -21,15 +21,15 @@ pub struct Model {
     pub id: i64,
     // 订阅源Id
     pub subscription_id: i64,
-    // links id
-    pub link_id: i64,
+    // category id
+    pub category_id: i64,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveColumn)]
 pub enum Column {
     Id,
     SubscriptionId,
-    LinkId,
+    CategoryId,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DerivePrimaryKey)]
@@ -50,7 +50,7 @@ impl ColumnTrait for Column {
         match self {
             Self::Id => ColumnType::Integer.def(),
             Self::SubscriptionId => ColumnType::Integer.def(),
-            Self::LinkId => ColumnType::Integer.def(),
+            Self::CategoryId => ColumnType::Integer.def(),
         }
     }
 }
@@ -58,33 +58,21 @@ impl ColumnTrait for Column {
 #[derive(Copy, Clone, Debug, EnumIter)]
 pub enum Relation {
     Subscription,
-    Link,
+    Category,
 }
 
 impl RelationTrait for Relation {
     fn def(&self) -> RelationDef {
         match self {
-            Self::Subscription => Entity::belongs_to(super::rss_subscriptions::Entity)
+            Self::Subscription => Entity::belongs_to(super::rss_subscription::Entity)
                 .from(Column::SubscriptionId)
-                .to(super::rss_subscriptions::Column::Id)
+                .to(super::rss_subscription::Column::Id)
                 .into(),
-            Self::Link => Entity::belongs_to(super::rss_links::Entity)
-                .from(Column::LinkId)
-                .to(super::rss_links::Column::Id)
+            Self::Category => Entity::belongs_to(super::rss_category::Entity)
+                .from(Column::CategoryId)
+                .to(super::rss_category::Column::Id)
                 .into(),
         }
-    }
-}
-
-impl Related<super::rss_subscriptions::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::Subscription.def()
-    }
-}
-
-impl Related<super::rss_links::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::Link.def()
     }
 }
 

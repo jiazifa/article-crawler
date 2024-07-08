@@ -8,7 +8,7 @@ pub struct Entity;
 
 impl EntityName for Entity {
     fn table_name(&self) -> &str {
-        "rss_subscription_update_config"
+        "rss_subscription_link"
     }
     fn schema_name(&self) -> Option<&str> {
         // Some("dasv")
@@ -16,42 +16,31 @@ impl EntityName for Entity {
     }
 }
 
-// 频率的定义: 一般来说，频率是一个浮点数，表示多少分钟更新一次 例如 60.0 表示一小时更新一次 30.0 表示半小时更新一次
 #[derive(Clone, Debug, PartialEq, DeriveModel, DeriveActiveModel, Serialize)]
 pub struct Model {
+    pub id: i64,
     // 订阅源Id
     pub subscription_id: i64,
-    // 初始频率
-    pub initial_frequency: f32,
-    // 自适应 频率
-    pub fitted_frequency: Option<f32>,
-    // 是否启用自适应
-    pub adaptive: bool,
-}
-
-impl Model {
-    pub fn get_frequency(&self) -> f32 {
-        self.fitted_frequency.unwrap_or(self.initial_frequency)
-    }
+    // links id
+    pub link_id: i64,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveColumn)]
 pub enum Column {
+    Id,
     SubscriptionId,
-    InitialFrequency,
-    FittedFrequency,
-    Adaptive,
+    LinkId,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DerivePrimaryKey)]
 pub enum PrimaryKey {
-    SubscriptionId,
+    Id,
 }
 
 impl PrimaryKeyTrait for PrimaryKey {
     type ValueType = i64;
     fn auto_increment() -> bool {
-        false
+        true
     }
 }
 
@@ -59,10 +48,9 @@ impl ColumnTrait for Column {
     type EntityName = Entity;
     fn def(&self) -> ColumnDef {
         match self {
+            Self::Id => ColumnType::Integer.def(),
             Self::SubscriptionId => ColumnType::Integer.def(),
-            Self::InitialFrequency => ColumnType::Float.def(),
-            Self::FittedFrequency => ColumnType::Float.def().nullable(),
-            Self::Adaptive => ColumnType::Boolean.def(),
+            Self::LinkId => ColumnType::Integer.def(),
         }
     }
 }
@@ -70,22 +58,33 @@ impl ColumnTrait for Column {
 #[derive(Copy, Clone, Debug, EnumIter)]
 pub enum Relation {
     Subscription,
+    Link,
 }
 
 impl RelationTrait for Relation {
     fn def(&self) -> RelationDef {
         match self {
-            Self::Subscription => Entity::belongs_to(super::rss_subscriptions::Entity)
+            Self::Subscription => Entity::belongs_to(super::rss_subscription::Entity)
                 .from(Column::SubscriptionId)
-                .to(super::rss_subscriptions::Column::Id)
+                .to(super::rss_subscription::Column::Id)
+                .into(),
+            Self::Link => Entity::belongs_to(super::rss_link::Entity)
+                .from(Column::LinkId)
+                .to(super::rss_link::Column::Id)
                 .into(),
         }
     }
 }
 
-impl Related<super::rss_subscriptions::Entity> for Entity {
+impl Related<super::rss_subscription::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::Subscription.def()
+    }
+}
+
+impl Related<super::rss_link::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::Link.def()
     }
 }
 

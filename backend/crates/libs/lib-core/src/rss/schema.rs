@@ -1,10 +1,10 @@
 use crate::common_schema::PageRequest;
 use crate::error::ErrorInService;
-
+use crate::rss::SubscriptionBuildSourceType;
 use chrono::naive::serde::ts_milliseconds_option;
 use chrono::NaiveDateTime;
 use lib_crawler::{try_get_all_image_from_html_content, try_get_all_text_from_html_content};
-use lib_entity::rss_category;
+use lib_entity::{rss_category, rss_subscription_build_record};
 use sea_orm::FromQueryResult;
 use serde::{Deserialize, Serialize};
 
@@ -150,8 +150,6 @@ pub struct LinkModel {
     pub title: String,
     // 链接
     pub link: String,
-    // 订阅源id
-    pub subscrption_id: i64,
     // 内容(可能为空，包含 html)
     #[builder(default)]
     pub content: Option<String>,
@@ -170,8 +168,8 @@ pub struct LinkModel {
     pub images: Option<Vec<Image>>,
 }
 
-impl From<lib_entity::rss_links::Model> for LinkModel {
-    fn from(value: lib_entity::rss_links::Model) -> Self {
+impl From<lib_entity::rss_link::Model> for LinkModel {
+    fn from(value: lib_entity::rss_link::Model) -> Self {
         let authors: Option<Vec<Author>> = serde_json::from_str(
             &value
                 .authors
@@ -188,14 +186,13 @@ impl From<lib_entity::rss_links::Model> for LinkModel {
         .unwrap_or(None);
         let description = value.description.unwrap_or("".to_string());
         let text_desc = value.desc_pure_txt.unwrap_or("".to_string());
-        let subscription_id = value.subscrption_id;
+
         Self {
             id: value.id,
             title: value.title,
             link: value.link,
             content: Some(description),
             description: Some(text_desc),
-            subscrption_id: subscription_id,
             published_at: value.published_at,
             authors,
             images,
@@ -503,8 +500,8 @@ pub struct CreateOrUpdateSubscriptionRequest {
     pub sort_order: Option<i32>,
 }
 
-impl From<lib_entity::rss_subscriptions::Model> for CreateOrUpdateSubscriptionRequest {
-    fn from(value: lib_entity::rss_subscriptions::Model) -> Self {
+impl From<lib_entity::rss_subscription::Model> for CreateOrUpdateSubscriptionRequest {
+    fn from(value: lib_entity::rss_subscription::Model) -> Self {
         let mut req = CreateOrUpdateSubscriptionRequestBuilder::default();
 
         req.id(value.id);
@@ -517,9 +514,6 @@ impl From<lib_entity::rss_subscriptions::Model> for CreateOrUpdateSubscriptionRe
         }
         if let Some(value) = value.site_link {
             req.site_link(value);
-        }
-        if let Some(value) = value.category_id {
-            req.category_id(value);
         }
         if let Some(value) = value.logo {
             req.logo(value);
@@ -536,9 +530,7 @@ impl From<lib_entity::rss_subscriptions::Model> for CreateOrUpdateSubscriptionRe
         if let Some(value) = value.pub_date {
             req.pub_date(value);
         }
-        if let Some(value) = value.last_build_date {
-            req.last_build_date(value);
-        }
+
         req.build()
             .expect(" `rss_subscriptions::Model` 解析 `CreateOrUpdateSubscriptionRequest` 失败")
     }
@@ -552,14 +544,10 @@ impl From<lib_entity::rss_subscriptions::Model> for CreateOrUpdateSubscriptionRe
 pub struct QuerySubscriptionRequest {
     // 唯一标识
     pub ids: Option<Vec<i64>>,
-    // 唯一标识
-    pub idfs: Option<Vec<String>>,
     // 标题
     pub title: Option<String>,
-    // 描述
-    pub description: Option<String>,
     // 分类Id
-    pub category_id: Option<String>,
+    pub category_id: Option<i64>,
     // 语言
     pub language: Option<Vec<String>>,
 
@@ -591,15 +579,6 @@ impl QueryPreferUpdateSubscriptionRequest {
     }
 }
 
-// 订阅源更新状态枚举
-#[derive(Debug, Clone, Deserialize, Default)]
-pub enum SubscriptionUpdateStatus {
-    #[default]
-    Success,
-    Failed(String),
-    Other(String),
-}
-
 #[derive(Debug, Clone, Deserialize, Default, Builder)]
 #[builder(setter(into, strip_option), default)]
 #[builder(derive(Debug))]
@@ -609,7 +588,7 @@ pub struct InsertSubscriptionRecordRequest {
     // 订阅源Id
     pub subscription_id: i64,
     // 状态 表示订阅源此次更新的状态， 成功 / 失败 / 其他 如果是失败，需要记录失败原因
-    pub status: SubscriptionUpdateStatus,
+    pub status: rss_subscription_build_record::Status,
     // 创建时间
     pub create_time: Option<NaiveDateTime>,
 }
@@ -621,7 +600,7 @@ pub struct InsertSubscriptionRecordRequest {
 pub struct QuerySubscriptionRecordRequest {
     pub subscription_ids: Option<Vec<i64>>,
     // 状态列表
-    pub status: Option<Vec<SubscriptionUpdateStatus>>,
+    pub status: Option<Vec<rss_subscription_build_record::Status>>,
     // 时间范围 低值  毫秒 13 位
     #[serde(default, with = "ts_milliseconds_option")]
     pub create_time_lower: Option<NaiveDateTime>,
@@ -632,36 +611,20 @@ pub struct QuerySubscriptionRecordRequest {
     pub page: PageRequest,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Default, Builder)]
 // 更新订阅源的配置
 // 频率的定义: 一般来说，频率是一个浮点数，表示多少分钟更新一次 例如 60.0 表示一小时更新一次 30.0 表示半小时更新一次
+#[builder(setter(into, strip_option), default)]
+#[builder(build_fn(error = "ErrorInService"))]
 pub struct UpdateSubscriptionConfigRequest {
     pub subscription_id: i64,
     pub initial_frequency: f32,
     pub fitted_frequency: Option<f32>,
-    pub adaptive: bool,
-}
-
-impl UpdateSubscriptionConfigRequest {
-    pub fn new(
-        subscription_id: i64,
-        init_frequency: Option<f32>,
-        fitted_frequency: Option<f32>,
-        adaptive: bool,
-    ) -> Self {
-        // 限制小数点后两位
-        let init_frequency = match init_frequency {
-            Some(f) => (f * 100.0).round() / 100.0,
-            None => 1.0,
-        };
-        let fitted_frequency = fitted_frequency.map(|f| (f * 100.0).round() / 100.0);
-        Self {
-            subscription_id,
-            initial_frequency: init_frequency,
-            fitted_frequency,
-            adaptive,
-        }
-    }
+    pub fitted_adaptive: bool,
+    pub last_build_at: Option<NaiveDateTime>,
+    // default
+    #[builder(default = "Some(SubscriptionBuildSourceType::Rss)")]
+    pub source_type: Option<SubscriptionBuildSourceType>,
 }
 
 pub struct QuerySubscriptionConfigRequest {

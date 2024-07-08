@@ -79,20 +79,26 @@ impl ColumnTrait for Column {
 
 #[derive(Copy, Clone, Debug, EnumIter)]
 pub enum Relation {
-    Subscriptions,
+    Subscription,
 }
 
 impl RelationTrait for Relation {
     fn def(&self) -> RelationDef {
-        match self {
-            Self::Subscriptions => Entity::has_many(super::rss_subscriptions::Entity).into(),
-        }
+        unimplemented!()
     }
 }
 
-impl Related<super::rss_subscriptions::Entity> for Entity {
+impl Related<super::rss_subscription::Entity> for Entity {
     fn to() -> RelationDef {
-        Relation::Subscriptions.def()
+        super::rss_subscription_category::Relation::Subscription.def()
+    }
+
+    fn via() -> Option<RelationDef> {
+        Some(
+            super::rss_subscription_category::Relation::Category
+                .def()
+                .rev(),
+        )
     }
 }
 

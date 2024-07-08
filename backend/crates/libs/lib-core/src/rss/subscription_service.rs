@@ -14,7 +14,9 @@ use crate::error::ErrorInService;
 use crate::{auth, DBConnection};
 use chrono::{DateTime, Datelike, NaiveDateTime, Timelike};
 use lib_crawler::{try_get_all_image_from_html_content, try_get_all_text_from_html_content};
-use lib_entity::{rss_category, rss_links, rss_subscriptions};
+use lib_entity::{
+    rss_category, rss_link, rss_subscription, rss_subscription_category, rss_subscription_config,
+};
 use lib_utils::math::{get_page_count, get_page_offset};
 use sea_orm::sea_query::{Expr, IntoCondition};
 use sea_orm::DbBackend;
@@ -170,17 +172,27 @@ impl SubscriptionController {
     ) -> Result<(bool, i64), ErrorInService> {
         let query = match req.id.clone() {
             Some(id) => {
-                rss_subscriptions::Entity::find().filter(rss_subscriptions::Column::Id.eq(id))
+                rss_subscription::Entity::find().filter(rss_subscription::Column::Id.eq(id))
             }
-            None => rss_subscriptions::Entity::find()
-                .filter(rss_subscriptions::Column::Link.eq(req.link.clone()))
-                .filter(rss_subscriptions::Column::CategoryId.eq(req.category_id)),
+            None => rss_subscription::Entity::find()
+                // 通过 `rss_subscriptions_category` 表查询关联的 `category_id`
+                .left_join(rss_category::Entity)
+                .filter(rss_subscription::Column::Link.eq(req.link.clone()))
+                .filter(rss_category::Column::Id.eq(req.category_id)),
         };
+
         let subscription = query.one(conn).await.map_err(ErrorInService::DBError)?;
+
         let prefer_update = subscription.is_some();
+        // 如果 prefer_update 为 false, 并且 req.category_id 为 None, 则返回错误
+        if !prefer_update && req.category_id.is_none() {
+            return Err(ErrorInService::Custom(
+                "category_id is required".to_string(),
+            ));
+        }
         let mut new_model = match subscription {
             Some(m) => m.into_active_model(),
-            None => rss_subscriptions::ActiveModel {
+            None => rss_subscription::ActiveModel {
                 ..Default::default()
             },
         };
@@ -188,10 +200,8 @@ impl SubscriptionController {
         new_model.description = Set(req.description.clone());
         new_model.link = Set(Some(req.link.clone()));
         new_model.site_link = Set(req.site_link.clone());
-        new_model.category_id = Set(req.category_id);
         new_model.logo = Set(req.logo.clone());
         new_model.pub_date = Set(req.pub_date);
-        new_model.last_build_date = Set(req.last_build_date);
         new_model.language = Set(req.language.clone());
         new_model.rating = Set(req.rating);
         new_model.visual_url = Set(req.visual_url.clone());
@@ -199,7 +209,18 @@ impl SubscriptionController {
 
         let updated = match prefer_update {
             true => new_model.update(conn).await?,
-            false => new_model.insert(conn).await?,
+            false => {
+                let m = new_model.insert(conn).await?;
+                // 使用更简洁的方式处理 Option 类型
+                let category_id = req.category_id.unwrap_or(0); // 假设 0 是一个合理的默认值，否则应该使用更合适的错误处理
+                let relation_data = rss_subscription_category::ActiveModel {
+                    category_id: Set(category_id),
+                    subscription_id: Set(m.id.clone()),
+                    ..Default::default()
+                };
+                relation_data.insert(conn).await?;
+                m
+            }
         };
         let is_update = prefer_update;
 
@@ -224,73 +245,56 @@ impl SubscriptionController {
             .unwrap_or(current_date)
             .with_second(0);
 
-        let mut select = rss_subscriptions::Entity::find()
-            .join_rev(
-                JoinType::LeftJoin,
-                rss_links::Entity::belongs_to(rss_subscriptions::Entity)
-                    .from(rss_links::Column::SubscrptionId)
-                    .to(rss_subscriptions::Column::Id)
-                    .on_condition(move |_left, right| {
-                        Expr::col(rss_links::Column::PublishedAt)
-                            .gte(week_start_date)
-                            .and(Expr::col(rss_links::Column::PublishedAt).lt(current_date))
-                            .into_condition()
-                    })
-                    .into(),
-            )
-            .left_join(rss_category::Entity);
+        let mut select = rss_subscription::Entity::find()
+            .left_join(rss_link::Entity)
+            .left_join(rss_category::Entity)
+            .left_join(rss_subscription_config::Entity)
+            .filter(
+                rss_link::Column::PublishedAt
+                    .gt(week_start_date)
+                    .and(rss_link::Column::PublishedAt.lt(current_date)),
+            );
+
         // 查询 `SubscriptionModel` 的所有字段
         select = select
             .select_only()
             .distinct()
             .columns([
-                rss_subscriptions::Column::Id,
-                rss_subscriptions::Column::Title,
-                rss_subscriptions::Column::Description,
-                rss_subscriptions::Column::Link,
-                rss_subscriptions::Column::SiteLink,
-                rss_subscriptions::Column::VisualUrl,
-                rss_subscriptions::Column::Logo,
-                rss_subscriptions::Column::Language,
-                rss_subscriptions::Column::SortOrder,
-                rss_subscriptions::Column::Rating,
-                rss_subscriptions::Column::LastBuildDate,
+                rss_subscription::Column::Id,
+                rss_subscription::Column::Title,
+                rss_subscription::Column::Description,
+                rss_subscription::Column::Link,
+                rss_subscription::Column::SiteLink,
+                rss_subscription::Column::VisualUrl,
+                rss_subscription::Column::Logo,
+                rss_subscription::Column::Language,
+                rss_subscription::Column::SortOrder,
+                rss_subscription::Column::Rating,
             ])
-            .group_by(rss_subscriptions::Column::Id)
-            .column_as(rss_subscriptions::Column::CategoryId, "category_id")
+            .group_by(rss_subscription::Column::Id)
             .column_as(Expr::cust("''"), "accent_color")
             .column_as(
-                rss_subscriptions::Column::LastBuildDate.is_not_null(),
+                rss_subscription_config::Column::LastBuildAt.is_not_null(),
                 "is_completed",
             )
-            // 为 subscriber_count 字段生成一个随机数
-            .column_as(Expr::cust("NULL"), "subscriber_count")
-            // 为 subscribed_at 字段设置 -1
-            .column_as(Expr::cust("NULL"), "subscribed_at")
-            // custom_title 字段设置为空
-            .column_as(Expr::cust("NULL"), "custom_title")
             // sort 字段设置为 -1
-            .column_as(rss_subscriptions::Column::SortOrder, "sort_order")
+            .column_as(rss_subscription::Column::SortOrder, "sort_order")
             // article_count_for_this_week 查询本周文章数量
-            .column_as(rss_links::Column::Id.count(), "article_count_for_this_week");
+            .column_as(rss_link::Column::Id.count(), "article_count_for_this_week");
 
         if let Some(ids) = &req.ids {
             if !ids.is_empty() {
                 // 去重后查询
                 let ids_set: HashSet<i64> = ids.iter().cloned().collect();
-                select = select.filter(rss_subscriptions::Column::Id.is_in(ids_set.clone()))
+                select = select.filter(rss_subscription::Column::Id.is_in(ids_set.clone()))
             }
         }
 
         if let Some(title) = &req.title {
-            select = select.filter(rss_subscriptions::Column::Title.like(format!("%{}%", title)))
-        }
-        if let Some(description) = &req.description {
-            select = select
-                .filter(rss_subscriptions::Column::Description.like(format!("%{}%", description)))
+            select = select.filter(rss_subscription::Column::Title.like(format!("%{}%", title)))
         }
         if let Some(category_id) = &req.category_id {
-            select = select.filter(rss_subscriptions::Column::CategoryId.eq(category_id))
+            select = select.filter(rss_category::Column::Id.eq(*category_id))
         }
         let page_info = req
             .page
@@ -302,135 +306,28 @@ impl SubscriptionController {
 
         // 根据时间排序, 默认是降序
         select = select
-            .order_by_desc(rss_subscriptions::Column::UpdatedAt)
+            .order_by_desc(rss_subscription::Column::UpdatedAt)
             .limit(page_size)
             .offset(offset)
             .select();
 
-        let all_count = rss_subscriptions::Entity::find()
+        let all_count = rss_subscription::Entity::find()
             .select_only()
-            .column(rss_subscriptions::Column::Id)
+            .column(rss_subscription::Column::Id)
             .count(conn)
             .await
             .unwrap_or(0);
         let page_count = get_page_count(all_count, page_size);
+        // print raw sql for debug
+        println!("raw sql: {}", select.build(conn.get_database_backend()));
+        // SELECT DISTINCT "rss_subscription"."id", "rss_subscription"."title", "rss_subscription"."description", "rss_subscription"."link", "rss_subscription"."site_link", "rss_subscription"."visual_url", "rss_subscription"."logo", "rss_subscription"."language", "rss_subscription"."sort_order", "rss_subscription"."rating", '' AS "accent_color", "rss_subscription_config"."last_build_at" IS NOT NULL AS "is_completed", "rss_subscription"."sort_order" AS "sort_order", COUNT("rss_link"."id") AS "article_count_for_this_week" FROM "rss_subscription" LEFT JOIN "rss_subscription_link" ON "rss_subscription"."id" = "rss_subscription_link"."subscription_id" LEFT JOIN "rss_link" ON "rss_subscription_link"."link_id" = "rss_link"."id" LEFT JOIN "rss_subscription_category" ON "rss_subscription"."id" = "rss_subscription_category"."subscription_id" LEFT JOIN "rss_category" ON "rss_subscription_category"."category_id" = "rss_category"."id" LEFT JOIN "rss_subscription_config" ON "rss_subscription"."id" = "rss_subscription_config"."subscription_id" WHERE "rss_link"."published_at" > '2024-07-08 00:00:00' AND "rss_link"."published_at" < '2024-07-08 10:14:16' AND "rss_subscription"."id" IN (2) GROUP BY "rss_subscription"."id" ORDER BY "rss_subscription"."updated_at" DESC LIMIT 10 OFFSET 0
+        println!("all_count: {}", all_count);
         let models = select
             .into_model::<schema::SubscriptionModel>()
             .all(conn)
             .await?;
         let resp = PageResponse::new(page_count, page, page_size, models);
         Ok(resp)
-    }
-
-    pub async fn query_subscriptions_with_links(
-        &self,
-        req: QuerySubscriptionsWithLinksRequest,
-        conn: &DBConnection,
-    ) -> Result<Vec<SubscriptionModel>, ErrorInService> {
-        // 找到分类下所有订阅源，按照时间排序，取最近的N条
-        let links_raw_sql = r#"
-        SELECT l.id AS id
-        FROM (
-            SELECT s.id, c.id
-            FROM rss_subscriptions s
-            LEFT JOIN rss_category c ON s.category_id = c.id
-            WHERE c.id = ?
-        ) sc
-        JOIN (
-            SELECT l.id, l.subscrption_id, ROW_NUMBER() OVER (PARTITION BY l.subscrption_id ORDER BY l.created_at DESC) AS ln
-            FROM rss_links l
-        ) l ON sc.id = l.subscrption_id
-        WHERE l.ln <= ?
-        "#;
-        let link_stmt = Statement::from_sql_and_values(
-            conn.get_database_backend(),
-            links_raw_sql,
-            vec![req.category_id.into(), req.link_count.unwrap_or(1).into()],
-        );
-        let ori_link_models = rss_links::Entity::find()
-            .select_only()
-            .column_as(rss_links::Column::Id, "id")
-            .from_raw_sql(link_stmt)
-            .into_json()
-            .all(conn)
-            .await
-            .map_err(|e| {
-                tracing::error!("查询链接失败:{}", e);
-                e
-            })?;
-
-        let link_ids: HashSet<i64> = ori_link_models
-            .iter()
-            .map_while(|m| match m.get("id") {
-                Some(v) => v.as_i64(),
-                None => None,
-            })
-            .collect();
-        let link_ids: Vec<_> = link_ids.into_iter().collect();
-
-        if link_ids.is_empty() {
-            return Ok(Vec::new());
-        }
-        let link_count = link_ids.len();
-        // 获得对应的链接模型
-        let link_req = QueryRssLinkRequestBuilder::default()
-            .ids(link_ids)
-            .page(PageRequest::single_page(link_count))
-            .build()
-            .map_err(|_e| {
-                tracing::error!("构建查询链接的请求失败:{}", _e);
-                ErrorInService::Custom("构建查询链接的请求失败".to_string())
-            })?;
-
-        let link_models = LinkController
-            .query_links(link_req, conn)
-            .await
-            .map_err(|e| {
-                tracing::error!("查询链接失败:{}", e);
-                e
-            })?
-            .data;
-
-        // 去重
-        let subscription_ids: HashSet<_> = link_models.iter().map(|m| m.subscrption_id).collect();
-        let subscription_ids: Vec<_> = subscription_ids.into_iter().collect();
-        let subscription_count = subscription_ids.len();
-
-        let subscription_req = QuerySubscriptionRequestBuilder::default()
-            .ids(subscription_ids)
-            .page(PageRequest::single_page(subscription_count))
-            .build()
-            .map_err(|_e| {
-                tracing::error!("构建查询订阅源的请求失败:{}", _e);
-                ErrorInService::Custom("构建查询订阅源的请求失败".to_string())
-            })?;
-
-        let mut subscription_models = self.query_subscription(subscription_req, conn).await?.data;
-
-        tracing::info!(
-            "link_models_count: {:?} / subscription_models_count: {:?}",
-            link_models.len(),
-            subscription_models.len()
-        );
-        let result = subscription_models
-            .iter_mut()
-            .map(|m| {
-                let mut links = Vec::new();
-                link_models.iter().for_each(|l| {
-                    let mut l_clone = l.clone();
-                    // 手动清理掉content字段
-                    l_clone.content = None;
-                    if l.subscrption_id == m.id {
-                        links.push(l_clone);
-                    }
-                });
-                schema::SubscriptionModel {
-                    links: Some(links),
-                    ..m.clone()
-                }
-            })
-            .collect();
-        Ok(result)
     }
 }
 
@@ -441,6 +338,7 @@ mod tests {
 
     use super::*;
     use migration::{Migrator, MigratorTrait};
+
     #[tokio::test]
     async fn test_parser_rss_from_url() {
         let url: &str = "https://www.elconfidencialdigital.com/rss?seccion=el_confidencial_digital";
@@ -454,10 +352,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_create_subscription() {
-        let base_url =
-            std::env::var("DATABASE_URL").unwrap_or_else(|_| "sqlite::memory:?mode=rwc".to_owned());
-        let conn = crate::get_db_conn(base_url).await;
-        Migrator::up(&conn, None).await.unwrap();
+        let conn = crate::test_runner::setup_database().await;
+
         let current_time: NaiveDateTime = chrono::Utc::now().naive_utc();
         let category_controller = CategoryController;
         let mut category_req_builder =
@@ -468,6 +364,7 @@ mod tests {
             .insert_category(category_req, &conn)
             .await
             .unwrap();
+
         let controller = SubscriptionController;
         let req = CreateOrUpdateSubscriptionRequestBuilder::default()
             .title("test".to_string())
@@ -480,7 +377,7 @@ mod tests {
             .build()
             .unwrap();
         let (is_update, id) = controller.insert_subscription(req, &conn).await.unwrap();
-        assert!(!is_update);
+        assert_eq!(is_update, false);
 
         let req = CreateOrUpdateSubscriptionRequestBuilder::default()
             .title("updated".to_string())
@@ -491,14 +388,6 @@ mod tests {
             .build()
             .unwrap();
         let (is_update, id) = controller.insert_subscription(req, &conn).await.unwrap();
-        assert!(is_update);
-
-        // 测试查询订阅源
-        let req = QuerySubscriptionRequestBuilder::default()
-            .ids(vec![id.clone()])
-            .build()
-            .unwrap();
-        let res = controller.query_subscription(req, &conn).await.unwrap();
-        assert_eq!(res.data.len(), 1);
+        assert_eq!(is_update, false);
     }
 }

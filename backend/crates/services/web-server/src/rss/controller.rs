@@ -322,26 +322,6 @@ async fn summary_article_mind_map(
         .with_data(summary))
 }
 
-/// 根据分类查看订阅源，附带几条链接的内容
-/// 指定 分类id
-async fn query_rss_subscriptions_with_links_by_category(
-    app: Extension<Arc<AppState>>,
-    Json(req): Json<QuerySubscriptionsWithLinksRequest>,
-) -> Result<APIResponse<Vec<SubscriptionModel>>, APIError> {
-    let conn = &app.pool;
-    let subscription_map_links = SubscriptionController
-        .query_subscriptions_with_links(req, conn)
-        .await
-        .map_err(|e| {
-            tracing::error!("query_rss_subscriptions_with_links_by_category error:{}", e);
-            e
-        })?;
-
-    Ok(APIResponse::<Vec<SubscriptionModel>>::new()
-        .with_code(200_i32)
-        .with_data(subscription_map_links))
-}
-
 pub(crate) fn build_routes() -> axum::Router {
     Router::new()
         // 订阅源
@@ -351,11 +331,6 @@ pub(crate) fn build_routes() -> axum::Router {
         )
         // 订阅源更新
         .route_with_tsr("/subscrition/update", post(update_rss_subscription))
-        // 根据分类查看订阅源，附带几条链接的内容
-        .route_with_tsr(
-            "/subscription/query_by_category_with_links",
-            post(query_rss_subscriptions_with_links_by_category),
-        )
         // 分类更新
         .route_with_tsr("/category/update", post(update_category))
         .route_with_tsr("/category/query", post(query_categories_by_option))

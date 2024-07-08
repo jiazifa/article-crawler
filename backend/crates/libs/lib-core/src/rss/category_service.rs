@@ -80,80 +80,6 @@ impl CategoryController {
             .all(conn)
             .await
             .map_err(ErrorInService::DBError);
-        let category_ids = models
-            .as_ref()
-            .map(|v| {
-                v.iter()
-                    .map(|m: &schema::CategoryModel| m.id)
-                    .collect::<Vec<_>>()
-            })
-            .unwrap_or_default();
-        // 根据分类查询订阅源，取前count个
-        if let Some(count) = req.need_feed_logo_count {
-            let category_ids_str = category_ids
-                .iter()
-                .map(|idf| format!("{}", idf))
-                .collect::<Vec<_>>()
-                .join(",");
-            let subscription_raw_sql = format!(
-                r#"
-                SELECT id, category_id, logo
-                FROM (
-                    SELECT
-                    s.id AS id, s.title AS title, 
-                    s.category_id AS category_id, s.logo AS logo,
-                    ROW_NUMBER() OVER (PARTITION BY s.category_id ORDER BY s.sort_order DESC) AS sn
-                    FROM rss_subscriptions s
-                    WHERE s.category_id IN ({})
-                ) AS subquery
-                WHERE sn <= {};
-                "#,
-                category_ids_str, count
-            );
-            tracing::info!("category_ids_str:{}", category_ids_str);
-            let subscription_stmt = Statement::from_sql_and_values(
-                conn.get_database_backend(),
-                subscription_raw_sql,
-                vec![],
-            );
-
-            let ori_subscription_models = lib_entity::rss_subscriptions::Entity::find()
-                .select_only()
-                .column_as(lib_entity::rss_subscriptions::Column::Id, "id")
-                .column_as(
-                    lib_entity::rss_subscriptions::Column::CategoryId,
-                    "category_id",
-                )
-                .column_as(lib_entity::rss_subscriptions::Column::Link, "link")
-                .from_raw_sql(subscription_stmt)
-                .into_json()
-                .all(conn)
-                .await
-                .map_err(|e| {
-                    tracing::error!("查询链接失败:{}", e);
-                    e
-                })?;
-
-            for (i, m) in models.as_mut().unwrap().iter_mut().enumerate() {
-                let category_id = m.id;
-                // 只取前count个
-                let urls = ori_subscription_models
-                    .iter()
-                    .filter_map(|feed| {
-                        // get json category_id as i64
-                        let feed_category_id = feed["category_id"].as_i64().unwrap_or_default();
-                        if feed_category_id == category_id {
-                            let link = feed["logo"].as_str().map(|s| s.to_string());
-                            link
-                        } else {
-                            None
-                        }
-                    })
-                    .take(count.try_into().unwrap())
-                    .collect::<Vec<_>>();
-                m.first_three_feed_urls = Some(urls);
-            }
-        }
 
         models
     }
@@ -167,12 +93,10 @@ mod tests {
     use crate::rss::schema::QueryCategoryRequestBuilder;
 
     use super::*;
+
     #[tokio::test]
     async fn test_create_category() {
-        let base_url =
-            std::env::var("DATABASE_URL").unwrap_or_else(|_| "sqlite::memory:?mode=rwc".to_owned());
-        let db = crate::get_db_conn(base_url).await;
-        Migrator::up(&db, None).await.unwrap();
+        let db = crate::test_runner::setup_database().await;
 
         let contoller = CategoryController;
 
@@ -193,16 +117,14 @@ mod tests {
             description: None,
             sort_order: Some(0),
         };
-        let res = contoller.insert_category(req, &db).await.unwrap();
-        assert_eq!(res.title, "test_updated");
+        let updated = contoller.insert_category(req, &db).await.unwrap();
+        assert_eq!(updated.title, "test_updated");
+        assert_eq!(res.id, updated.id);
     }
 
     #[tokio::test]
     async fn test_query_category() {
-        let base_url =
-            std::env::var("DATABASE_URL").unwrap_or_else(|_| "sqlite::memory:?mode=rwc".to_owned());
-        let conn = crate::get_db_conn(base_url).await;
-        Migrator::up(&conn, None).await.unwrap();
+        let conn = crate::test_runner::setup_database().await;
 
         let contoller = CategoryController;
         let req = CreateOrUpdateCategoryRequest {

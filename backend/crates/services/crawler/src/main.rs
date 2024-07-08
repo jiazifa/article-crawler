@@ -4,9 +4,11 @@ use crawler::utils::{load_categories_from_dir, load_subscriptions_from_dir};
 use lib_core::error::ErrorInService;
 use lib_core::rss::schema::{
     InsertSubscriptionRecordRequestBuilder, QueryPreferUpdateSubscriptionRequest,
-    SubscriptionUpdateStatus, SubscriptionWithLinksResp,
+    SubscriptionWithLinksResp,
 };
-use lib_core::rss::{CreateOrUpdateSubscriptionRequest, LinkController};
+use lib_core::rss::{
+    CreateOrUpdateSubscriptionRequest, LinkController, SubscriptionBuildRecordStatus,
+};
 use lib_core::rss::{SubscriptionController, SubscritionConfigController};
 use lib_utils::Setting;
 use std::sync::{Arc, Mutex};
@@ -66,19 +68,6 @@ impl Runner {
             .iter()
             .map(|link| link.to_owned())
             .collect::<Vec<lib_core::rss::schema::LinkModel>>();
-        // 我们尝试将 links 根据 subscrption_id 分组
-        let grouped_links = links.iter().fold(
-            std::collections::HashMap::<i64, Vec<lib_core::rss::schema::LinkModel>>::new(),
-            |mut acc, link| {
-                let subscrption_id = link.subscrption_id;
-                if let Some(group) = acc.get_mut(&subscrption_id) {
-                    group.push(link.clone());
-                } else {
-                    acc.insert(subscrption_id, vec![link.clone()]);
-                }
-                acc
-            },
-        );
 
         let (link_update_tx, mut link_update_rx) = tokio::sync::mpsc::channel::<
             Result<lib_core::rss::CreateOrUpdateRssLinkRequest, ErrorInService>,
@@ -107,59 +96,56 @@ impl Runner {
         let max_concurrent_tasks = num_cpus + 2;
         let semaphore = Arc::new(tokio::sync::Semaphore::new(max_concurrent_tasks));
 
-        for (_, links_in_sub) in grouped_links {
-            for link in links_in_sub {
-                let request_url = format!("{}/parse", js_server_host);
-                let tx = link_update_tx.clone();
-                let semaphore = Arc::clone(&semaphore);
-                let task = tokio::spawn(async move {
-                    let _permit = semaphore.acquire().await;
-                    let result =
-                        match crawler::utils::fetch_link_meta(link.link.clone(), request_url).await
-                        {
-                            Ok(meta) => {
-                                let mut update_link_req_builder =
+        for link in links {
+            let request_url = format!("{}/parse", js_server_host);
+            let tx = link_update_tx.clone();
+            let semaphore = Arc::clone(&semaphore);
+            let task = tokio::spawn(async move {
+                let _permit = semaphore.acquire().await;
+                let result = match crawler::utils::fetch_link_meta(link.link.clone(), request_url)
+                    .await
+                {
+                    Ok(meta) => {
+                        let mut update_link_req_builder =
                             lib_core::rss::schema::CreateOrUpdateRssLinkRequestBuilder::default();
-                                update_link_req_builder.subscrption_id(link.subscrption_id);
-                                update_link_req_builder.link(link.link);
-                                update_link_req_builder.title(link.title);
-                                if link.content.is_none() {
-                                    if let Some(content) =
-                                        meta["content"].as_str().map(|content| content.to_string())
-                                    {
-                                        update_link_req_builder.description(content.clone());
+                        update_link_req_builder.link(link.link);
+                        update_link_req_builder.title(link.title);
+                        if link.content.is_none() {
+                            if let Some(content) =
+                                meta["content"].as_str().map(|content| content.to_string())
+                            {
+                                update_link_req_builder.description(content.clone());
 
-                                        if let Ok(desc_pure_txt) =
-                                            lib_crawler::try_get_all_text_from_html_content(content)
-                                        {
-                                            update_link_req_builder.desc_pure_txt(desc_pure_txt);
-                                        }
-                                    }
-                                }
-                                if let Some(lead_image_url) = meta["lead_image_url"]
-                                    .as_str()
-                                    .map(|lead_image_url| lead_image_url.to_string())
+                                if let Ok(desc_pure_txt) =
+                                    lib_crawler::try_get_all_text_from_html_content(content)
                                 {
-                                    let image = lib_core::rss::schema::Image {
-                                        url: lead_image_url.clone(),
-                                        title: None,
-                                        link: None,
-                                        width: None,
-                                        height: None,
-                                        description: None,
-                                    };
-                                    update_link_req_builder.images(vec![image]);
+                                    update_link_req_builder.desc_pure_txt(desc_pure_txt);
                                 }
-                                // 如果没有 Description， 那么尝试使用 content
-
-                                update_link_req_builder.build()
                             }
-                            Err(e) => Err(e),
-                        };
-                    _ = tx.send(result).await;
-                });
-                tasks.push(task);
-            }
+                        }
+                        if let Some(lead_image_url) = meta["lead_image_url"]
+                            .as_str()
+                            .map(|lead_image_url| lead_image_url.to_string())
+                        {
+                            let image = lib_core::rss::schema::Image {
+                                url: lead_image_url.clone(),
+                                title: None,
+                                link: None,
+                                width: None,
+                                height: None,
+                                description: None,
+                            };
+                            update_link_req_builder.images(vec![image]);
+                        }
+                        // 如果没有 Description， 那么尝试使用 content
+
+                        update_link_req_builder.build()
+                    }
+                    Err(e) => Err(e),
+                };
+                _ = tx.send(result).await;
+            });
+            tasks.push(task);
         }
 
         // wait for all tasks to finish
@@ -197,7 +183,7 @@ impl Runner {
 
         // define a safe variable to count the number of updated subscriptions and links
         let inserted_links = Arc::new(tokio::sync::Mutex::new(
-            Vec::<lib_entity::rss_links::Model>::new(),
+            Vec::<lib_entity::rss_link::Model>::new(),
         ));
         let conn_origin_arc = Arc::new(tokio::sync::Mutex::new(conn_origin));
         let updated_subscription_count = Arc::new(Mutex::new(0));
@@ -228,7 +214,7 @@ impl Runner {
                         if let Some(id) = subscription.id {
                             if let Ok(req) = InsertSubscriptionRecordRequestBuilder::default()
                                 .subscription_id(id)
-                                .status(SubscriptionUpdateStatus::Failed(e.to_string()))
+                                .status(SubscriptionBuildRecordStatus::Faild)
                                 .build()
                             {
                                 _ = subs_config_controller
@@ -300,7 +286,7 @@ impl Runner {
                     if let Some(id) = subscription.id {
                         if let Ok(req) = InsertSubscriptionRecordRequestBuilder::default()
                             .subscription_id(id)
-                            .status(SubscriptionUpdateStatus::Success)
+                            .status(SubscriptionBuildRecordStatus::Success)
                             .build()
                         {
                             _ = subs_config_controller

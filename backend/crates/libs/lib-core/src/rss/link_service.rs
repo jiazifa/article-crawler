@@ -7,7 +7,7 @@ use crate::error::ErrorInService;
 
 use crate::DBConnection;
 use chrono::NaiveDateTime;
-use lib_entity::{rss_links, rss_subscriptions};
+use lib_entity::{rss_link, rss_subscription};
 use lib_utils::math::{get_page_count, get_page_offset};
 use sea_orm::{entity::*, query::*};
 use serde::Deserialize;
@@ -19,13 +19,14 @@ impl LinkController {
         &self,
         req: CreateOrUpdateRssLinkRequest,
         conn: &DBConnection,
-    ) -> Result<(bool, rss_links::Model), ErrorInService> {
+    ) -> Result<(bool, rss_link::Model), ErrorInService> {
         // 构建查找条件
         let query = match req.id.clone() {
-            Some(idf) => rss_links::Entity::find().filter(rss_links::Column::Id.eq(idf)),
-            None => rss_links::Entity::find()
-                .filter(rss_links::Column::Link.eq(req.link.clone()))
-                .filter(rss_links::Column::SubscrptionId.eq(req.subscrption_id)),
+            Some(id) => rss_link::Entity::find().filter(rss_link::Column::Id.eq(id)),
+            None => rss_link::Entity::find()
+                .left_join(rss_subscription::Entity)
+                .filter(rss_link::Column::Link.eq(req.link.clone()))
+                .filter(rss_subscription::Column::Id.eq(req.subscrption_id)),
         };
         // 执行查找
         let link = query.one(conn).await.map_err(ErrorInService::DBError)?;
@@ -35,14 +36,12 @@ impl LinkController {
         // 如果找到了，就更新，否则就创建
         let mut new_model = match link {
             Some(m) => m.into_active_model(),
-            None => rss_links::ActiveModel {
+            None => rss_link::ActiveModel {
                 ..Default::default()
             },
         };
         new_model.title = Set(req.title.clone());
-        if let Some(subscrption_id) = &req.subscrption_id {
-            new_model.subscrption_id = Set(*subscrption_id);
-        }
+
         let image_value = serde_json::to_value(req.images.clone()).unwrap();
         let author_value = serde_json::to_value(req.authors.clone()).unwrap();
         new_model.link = Set(req.link.clone());
@@ -78,7 +77,7 @@ impl LinkController {
 
         // 根据时间排序, 默认是降序
         select = select
-            .order_by_desc(rss_links::Column::PublishedAt)
+            .order_by_desc(rss_link::Column::PublishedAt)
             .limit(page_size)
             .offset(offset)
             .select();
@@ -105,8 +104,8 @@ impl LinkController {
         expired_at: NaiveDateTime,
         conn: &DBConnection,
     ) -> Result<u64, ErrorInService> {
-        let result = lib_entity::rss_links::Entity::delete_many()
-            .filter(lib_entity::rss_links::Column::PublishedAt.lt(expired_at))
+        let result = lib_entity::rss_link::Entity::delete_many()
+            .filter(lib_entity::rss_link::Column::PublishedAt.lt(expired_at))
             .exec(conn)
             .await?;
         Ok(result.rows_affected)
@@ -121,44 +120,43 @@ impl QueryRssLinkRequest {
         Ok(count)
     }
 
-    fn build_query(&self) -> Select<rss_links::Entity> {
-        let mut select = rss_links::Entity::find().inner_join(rss_subscriptions::Entity);
+    fn build_query(&self) -> Select<rss_link::Entity> {
+        let mut select = rss_link::Entity::find().inner_join(rss_subscription::Entity);
         select = select
             .select_only()
             .columns(vec![
-                rss_links::Column::Id,
-                rss_links::Column::Title,
-                rss_links::Column::Link,
-                rss_links::Column::Description,
-                rss_links::Column::DescPureTxt,
-                rss_links::Column::PublishedAt,
+                rss_link::Column::Id,
+                rss_link::Column::Title,
+                rss_link::Column::Link,
+                rss_link::Column::Description,
+                rss_link::Column::DescPureTxt,
+                rss_link::Column::PublishedAt,
             ])
             // subscrption_id
-            .column_as(rss_subscriptions::Column::Id, "subscrption_id")
-            .column_as(rss_links::Column::Images, "images")
+            .column_as(rss_subscription::Column::Id, "subscrption_id")
+            .column_as(rss_link::Column::Images, "images")
             // authors 是 authors_json 的解析结果
-            .column_as(rss_links::Column::Authors, "authors");
+            .column_as(rss_link::Column::Authors, "authors");
 
         if let Some(ids) = &self.ids {
             if !ids.is_empty() {
-                select = select.filter(rss_links::Column::Id.is_in(ids.clone()))
+                select = select.filter(rss_link::Column::Id.is_in(ids.clone()))
             }
         }
         if let Some(title) = &self.title {
-            select = select.filter(rss_links::Column::Title.like(format!("%{}%", title)))
+            select = select.filter(rss_link::Column::Title.like(format!("%{}%", title)))
         }
         if let Some(subscription_ids) = &self.subscrption_ids {
             if !subscription_ids.is_empty() {
-                select =
-                    select.filter(rss_subscriptions::Column::Id.is_in(subscription_ids.clone()))
+                select = select.filter(rss_subscription::Column::Id.is_in(subscription_ids.clone()))
             }
         }
 
         if let Some(published_at_lower) = &self.published_at_lower {
-            select = select.filter(rss_links::Column::PublishedAt.gt(*published_at_lower))
+            select = select.filter(rss_link::Column::PublishedAt.gt(*published_at_lower))
         }
         if let Some(published_at_upper) = &self.published_at_upper {
-            select = select.filter(rss_links::Column::PublishedAt.lt(*published_at_upper))
+            select = select.filter(rss_link::Column::PublishedAt.lt(*published_at_upper))
         }
         select
     }
@@ -175,10 +173,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_create_link() {
-        let base_url =
-            std::env::var("DATABASE_URL").unwrap_or_else(|_| "sqlite::memory:?mode=rwc".to_owned());
-        let conn = crate::get_db_conn(base_url).await;
-        Migrator::up(&conn, None).await.unwrap();
+        let conn = crate::test_runner::setup_database().await;
+
         {
             let controller = LinkController;
             let current_date = chrono::Utc::now().naive_utc();

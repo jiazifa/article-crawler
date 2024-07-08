@@ -11,9 +11,12 @@ pub use link_summary::LinkSummaryController;
 pub use subscription_service::SubscriptionController;
 pub use subscription_update::SubscritionConfigController;
 
+pub use lib_entity::rss_subscription_build_record::Status as SubscriptionBuildRecordStatus;
 pub use schema::{CreateOrUpdateCategoryRequest, QueryCategoryRequest};
 pub use schema::{CreateOrUpdateRssLinkRequest, QueryRssLinkRequest};
 pub use schema::{
     CreateOrUpdateSubscriptionRequest, QueryPreferUpdateSubscriptionRequest,
     QuerySubscriptionRequest, QuerySubscriptionsWithLinksRequest,
 };
+
+pub use lib_entity::rss_subscription_config::SourceType as SubscriptionBuildSourceType;

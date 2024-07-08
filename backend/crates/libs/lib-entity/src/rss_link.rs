@@ -8,7 +8,7 @@ pub struct Entity;
 
 impl EntityName for Entity {
     fn table_name(&self) -> &str {
-        "rss_links"
+        "rss_link"
     }
     fn schema_name(&self) -> Option<&str> {
         // Some("dasv")
@@ -32,8 +32,6 @@ pub struct Model {
     pub images: Option<Json>,
     // 作者
     pub authors: Option<Json>,
-    // 订阅源 id
-    pub subscrption_id: i64,
     // tags array of string
     pub tags: Option<Json>,
     // 发布时间
@@ -56,7 +54,6 @@ pub enum Column {
     Link,
     Description,
     DescPureTxt,
-    SubscrptionId,
     Images,
     Authors,
     Tags,
@@ -92,7 +89,6 @@ impl ColumnTrait for Column {
             Self::Tags => ColumnType::Array(RcOrArc::new(ColumnType::String(Some(64u32))))
                 .def()
                 .nullable(),
-            Self::SubscrptionId => ColumnType::Integer.def(),
             Self::Link => ColumnType::Text.def(),
             Self::PublishedAt => ColumnType::DateTime.def().nullable(),
             Self::CreatedAt => ColumnType::DateTime
@@ -107,24 +103,18 @@ impl ColumnTrait for Column {
 
 #[derive(Copy, Clone, Debug, EnumIter)]
 pub enum Relation {
-    Subscrption,
     Summary,
     MindMap,
+    Subscriptions,
 }
 
 impl RelationTrait for Relation {
     fn def(&self) -> RelationDef {
         match self {
-            Self::Subscrption => Entity::has_many(super::rss_subscriptions::Entity).into(),
             Self::Summary => Entity::has_one(super::rss_link_summary::Entity).into(),
             Self::MindMap => Entity::has_one(super::rss_link_mindmap::Entity).into(),
+            Self::Subscriptions => Entity::has_many(super::rss_subscription::Entity).into(),
         }
-    }
-}
-
-impl Related<super::rss_subscriptions::Entity> for Entity {
-    fn to() -> RelationDef {
-        super::rss_links_subscriptions::Relation::Subscription.def()
     }
 }
 
@@ -137,6 +127,16 @@ impl Related<super::rss_link_summary::Entity> for Entity {
 impl Related<super::rss_link_mindmap::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::MindMap.def()
+    }
+}
+
+impl Related<super::rss_subscription::Entity> for Entity {
+    fn to() -> RelationDef {
+        super::rss_subscription_link::Relation::Subscription.def()
+    }
+
+    fn via() -> Option<RelationDef> {
+        Some(super::rss_subscription_link::Relation::Link.def().rev())
     }
 }
 

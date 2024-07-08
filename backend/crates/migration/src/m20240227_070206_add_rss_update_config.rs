@@ -10,7 +10,7 @@ impl MigrationTrait for Migration {
         manager
             .create_table(
                 Table::create()
-                    .table(Alias::new("rss_subscription_update_config"))
+                    .table(Alias::new("rss_subscription_config"))
                     .if_not_exists()
                     .col(
                         ColumnDef::new(Alias::new("subscription_id"))
@@ -32,7 +32,23 @@ impl MigrationTrait for Migration {
                             .null(),
                     )
                     // 是否启用自适应
-                    .col(ColumnDef::new(Alias::new("adaptive")).boolean().not_null())
+                    .col(
+                        ColumnDef::new(Alias::new("fitted_adaptive"))
+                            .boolean()
+                            .not_null(),
+                    )
+                    // Source Type
+                    .col(
+                        ColumnDef::new(Alias::new("source_type"))
+                            .string_len(32u32)
+                            .null(),
+                    )
+                    // 最近一次更新时间 last_build_at
+                    .col(
+                        ColumnDef::new(Alias::new("last_build_at"))
+                            .date_time()
+                            .null(),
+                    )
                     .to_owned(),
             )
             .await?;
@@ -43,7 +59,7 @@ impl MigrationTrait for Migration {
         manager
             .drop_table(
                 Table::drop()
-                    .table(Alias::new("rss_subscription_update_config"))
+                    .table(Alias::new("rss_subscription_config"))
                     .to_owned(),
             )
             .await?;

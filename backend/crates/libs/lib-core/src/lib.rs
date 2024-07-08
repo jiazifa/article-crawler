@@ -27,3 +27,22 @@ pub async fn get_db_conn(uri: String) -> DBConnection {
     tracing::info!("Database connected");
     db
 }
+
+#[cfg(test)]
+mod test_runner {
+    use migration::{Migrator, MigratorTrait};
+    use sqlx::migrate::Migrate;
+
+    use super::DBConnection;
+
+    pub(crate) async fn setup_database() -> DBConnection {
+        let base_url =
+            std::env::var("DATABASE_URL").unwrap_or_else(|_| "sqlite::memory:?mode=rwc".to_owned());
+        let db = crate::get_db_conn(base_url).await;
+        // 假设 `Migrator` 是你的迁移模块，它实现了 `MigratorTrait`
+        if let Err(e) = Migrator::up(&db, None).await {
+            println!("error: {:?}", e);
+        }
+        db
+    }
+}

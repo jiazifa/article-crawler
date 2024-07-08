@@ -8,7 +8,7 @@ pub struct Entity;
 
 impl EntityName for Entity {
     fn table_name(&self) -> &str {
-        "rss_subscriptions"
+        "rss_subscription"
     }
     fn schema_name(&self) -> Option<&str> {
         // Some("dasv")
@@ -28,8 +28,6 @@ pub struct Model {
     pub link: Option<String>,
     // 对应rss链接提供方的网站
     pub site_link: Option<String>,
-    // 分类Id
-    pub category_id: Option<i64>,
     // logo URL
     pub logo: Option<String>,
     // 语言
@@ -43,9 +41,6 @@ pub struct Model {
     // 发布日期
     #[serde(serialize_with = "to_milli_tsopt")]
     pub pub_date: Option<NaiveDateTime>,
-    // 最近更新时间
-    #[serde(serialize_with = "to_milli_tsopt")]
-    pub last_build_date: Option<NaiveDateTime>,
     // 创建时间
     #[serde(skip)]
     #[serde(serialize_with = "to_milli_ts")]
@@ -63,14 +58,12 @@ pub enum Column {
     Description,
     Link,
     SiteLink,
-    CategoryId,
     Logo,
     Language,
     Rating,
     VisualUrl,
     SortOrder,
     PubDate,
-    LastBuildDate,
     CreatedAt,
     UpdatedAt,
 }
@@ -95,7 +88,6 @@ impl ColumnTrait for Column {
             Self::Title => ColumnType::String(Some(255u32)).def().nullable(),
             Self::Description => ColumnType::Text.def().nullable(),
             Self::Link => ColumnType::Text.def().nullable(),
-            Self::CategoryId => ColumnType::Integer.def().nullable(),
             Self::SiteLink => ColumnType::String(Some(255u32)).def().nullable(),
             Self::Logo => ColumnType::Text.def().nullable(),
             Self::Language => ColumnType::String(Some(64u32)).def().nullable(),
@@ -103,7 +95,6 @@ impl ColumnTrait for Column {
             Self::VisualUrl => ColumnType::Text.def().nullable(),
             Self::SortOrder => ColumnType::Integer.def().nullable(),
             Self::PubDate => ColumnType::DateTime.def().nullable(),
-            Self::LastBuildDate => ColumnType::DateTime.def().nullable(),
             Self::CreatedAt => ColumnType::DateTime
                 .def()
                 .default(Expr::current_timestamp()),
@@ -117,6 +108,8 @@ impl ColumnTrait for Column {
 #[derive(Copy, Clone, Debug, EnumIter)]
 pub enum Relation {
     Category,
+    UpdateRecords,
+    UpdateConfig,
     Links,
 }
 
@@ -124,20 +117,52 @@ impl RelationTrait for Relation {
     fn def(&self) -> RelationDef {
         match self {
             Self::Category => Entity::has_many(super::rss_category::Entity).into(),
-            Self::Links => Entity::has_many(super::rss_links::Entity).into(),
+            Self::UpdateRecords => {
+                Entity::has_many(super::rss_subscription_build_record::Entity).into()
+            }
+            Self::UpdateConfig => Entity::has_one(super::rss_subscription_config::Entity).into(),
+            Self::Links => Entity::has_many(super::rss_subscription_link::Entity).into(),
         }
+    }
+}
+
+impl Related<super::rss_subscription_build_record::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::UpdateRecords.def()
+    }
+}
+
+impl Related<super::rss_subscription_config::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::UpdateConfig.def()
     }
 }
 
 impl Related<super::rss_category::Entity> for Entity {
     fn to() -> RelationDef {
-        super::rss_subscriptions_category::Relation::Category.def()
+        super::rss_subscription_category::Relation::Category.def()
+    }
+
+    fn via() -> Option<RelationDef> {
+        Some(
+            super::rss_subscription_category::Relation::Subscription
+                .def()
+                .rev(),
+        )
     }
 }
 
-impl Related<super::rss_links::Entity> for Entity {
+impl Related<super::rss_link::Entity> for Entity {
     fn to() -> RelationDef {
-        Relation::Links.def()
+        super::rss_subscription_link::Relation::Link.def()
+    }
+
+    fn via() -> Option<RelationDef> {
+        Some(
+            super::rss_subscription_link::Relation::Subscription
+                .def()
+                .rev(),
+        )
     }
 }
 
