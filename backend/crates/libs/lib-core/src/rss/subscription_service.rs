@@ -319,9 +319,7 @@ impl SubscriptionController {
             .unwrap_or(0);
         let page_count = get_page_count(all_count, page_size);
         // print raw sql for debug
-        println!("raw sql: {}", select.build(conn.get_database_backend()));
-        // SELECT DISTINCT "rss_subscription"."id", "rss_subscription"."title", "rss_subscription"."description", "rss_subscription"."link", "rss_subscription"."site_link", "rss_subscription"."visual_url", "rss_subscription"."logo", "rss_subscription"."language", "rss_subscription"."sort_order", "rss_subscription"."rating", '' AS "accent_color", "rss_subscription_config"."last_build_at" IS NOT NULL AS "is_completed", "rss_subscription"."sort_order" AS "sort_order", COUNT("rss_link"."id") AS "article_count_for_this_week" FROM "rss_subscription" LEFT JOIN "rss_subscription_link" ON "rss_subscription"."id" = "rss_subscription_link"."subscription_id" LEFT JOIN "rss_link" ON "rss_subscription_link"."link_id" = "rss_link"."id" LEFT JOIN "rss_subscription_category" ON "rss_subscription"."id" = "rss_subscription_category"."subscription_id" LEFT JOIN "rss_category" ON "rss_subscription_category"."category_id" = "rss_category"."id" LEFT JOIN "rss_subscription_config" ON "rss_subscription"."id" = "rss_subscription_config"."subscription_id" WHERE "rss_link"."published_at" > '2024-07-08 00:00:00' AND "rss_link"."published_at" < '2024-07-08 10:14:16' AND "rss_subscription"."id" IN (2) GROUP BY "rss_subscription"."id" ORDER BY "rss_subscription"."updated_at" DESC LIMIT 10 OFFSET 0
-        println!("all_count: {}", all_count);
+
         let models = select
             .into_model::<schema::SubscriptionModel>()
             .all(conn)
@@ -389,5 +387,48 @@ mod tests {
             .unwrap();
         let (is_update, id) = controller.insert_subscription(req, &conn).await.unwrap();
         assert_eq!(is_update, false);
+
+        let current_date = chrono::Utc::now().naive_utc();
+        // get start of this week, datetime is 00:00:00
+        let week_start_date = current_date
+            .checked_sub_signed(chrono::Duration::days(
+                current_date.weekday().num_days_from_monday() as i64,
+            ))
+            .unwrap_or(current_date)
+            .with_hour(0)
+            .unwrap_or(current_date)
+            .with_minute(0)
+            .unwrap_or(current_date)
+            .with_second(0);
+
+        // simple query
+        let mut select = lib_entity::rss_subscription::Entity::find()
+            .join(
+                JoinType::LeftJoin,
+                lib_entity::rss_subscription::Relation::Links
+                    .def()
+                    .on_condition(move |_left, right| {
+                        Expr::col(lib_entity::rss_link::Column::PublishedAt)
+                            .gte(week_start_date)
+                            .and(
+                                Expr::col(lib_entity::rss_link::Column::PublishedAt)
+                                    .lt(current_date),
+                            )
+                            .into_condition()
+                    })
+                    .into(),
+            )
+            .left_join(lib_entity::rss_category::Entity)
+            .left_join(lib_entity::rss_subscription_config::Entity)
+            // .filter(
+            //     rss_link::Column::PublishedAt
+            //         .gt(week_start_date)
+            //         .and(rss_link::Column::PublishedAt.lt(current_date)),
+            // )
+            .filter(lib_entity::rss_subscription::Column::Id.eq(id));
+        println!("sql: {}", select.build(conn.get_database_backend()));
+        let models = select.all(&conn).await.unwrap();
+
+        assert_eq!(models.len(), 1);
     }
 }
