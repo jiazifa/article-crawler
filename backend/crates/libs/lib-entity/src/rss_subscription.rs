@@ -117,22 +117,20 @@ impl RelationTrait for Relation {
     fn def(&self) -> RelationDef {
         match self {
             Self::Category => Entity::has_many(super::rss_category::Entity).into(),
-            Self::UpdateRecords => {
-                Entity::has_many(super::rss_subscription_build_record::Entity).into()
-            }
-            Self::UpdateConfig => Entity::has_one(super::rss_subscription_config::Entity).into(),
+            Self::UpdateRecords => Entity::has_many(super::feed_build_record::Entity).into(),
+            Self::UpdateConfig => Entity::has_one(super::feed_build_config::Entity).into(),
             Self::Links => Entity::has_many(super::rss_subscription_link::Entity).into(),
         }
     }
 }
 
-impl Related<super::rss_subscription_build_record::Entity> for Entity {
+impl Related<super::feed_build_record::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::UpdateRecords.def()
     }
 }
 
-impl Related<super::rss_subscription_config::Entity> for Entity {
+impl Related<super::feed_build_config::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::UpdateConfig.def()
     }
@@ -152,7 +150,7 @@ impl Related<super::rss_category::Entity> for Entity {
     }
 }
 
-impl Related<super::rss_link::Entity> for Entity {
+impl Related<super::feed_link::Entity> for Entity {
     fn to() -> RelationDef {
         super::rss_subscription_link::Relation::Link.def()
     }

@@ -7,7 +7,7 @@ use crate::error::ErrorInService;
 
 use crate::DBConnection;
 use chrono::NaiveDateTime;
-use lib_entity::{rss_link, rss_subscription};
+use lib_entity::{feed_link, rss_subscription};
 use lib_utils::math::{get_page_count, get_page_offset};
 use sea_orm::{entity::*, query::*};
 use serde::Deserialize;
@@ -19,13 +19,13 @@ impl LinkController {
         &self,
         req: CreateOrUpdateRssLinkRequest,
         conn: &DBConnection,
-    ) -> Result<(bool, rss_link::Model), ErrorInService> {
+    ) -> Result<(bool, feed_link::Model), ErrorInService> {
         // 构建查找条件
         let query = match req.id.clone() {
-            Some(id) => rss_link::Entity::find().filter(rss_link::Column::Id.eq(id)),
-            None => rss_link::Entity::find()
+            Some(id) => feed_link::Entity::find().filter(feed_link::Column::Id.eq(id)),
+            None => feed_link::Entity::find()
                 .left_join(rss_subscription::Entity)
-                .filter(rss_link::Column::Link.eq(req.link.clone()))
+                .filter(feed_link::Column::Link.eq(req.link.clone()))
                 .filter(rss_subscription::Column::Id.eq(req.subscrption_id)),
         };
         // 执行查找
@@ -36,7 +36,7 @@ impl LinkController {
         // 如果找到了，就更新，否则就创建
         let mut new_model = match link {
             Some(m) => m.into_active_model(),
-            None => rss_link::ActiveModel {
+            None => feed_link::ActiveModel {
                 ..Default::default()
             },
         };
@@ -77,7 +77,7 @@ impl LinkController {
 
         // 根据时间排序, 默认是降序
         select = select
-            .order_by_desc(rss_link::Column::PublishedAt)
+            .order_by_desc(feed_link::Column::PublishedAt)
             .limit(page_size)
             .offset(offset)
             .select();
@@ -104,8 +104,8 @@ impl LinkController {
         expired_at: NaiveDateTime,
         conn: &DBConnection,
     ) -> Result<u64, ErrorInService> {
-        let result = lib_entity::rss_link::Entity::delete_many()
-            .filter(lib_entity::rss_link::Column::PublishedAt.lt(expired_at))
+        let result = lib_entity::feed_link::Entity::delete_many()
+            .filter(lib_entity::feed_link::Column::PublishedAt.lt(expired_at))
             .exec(conn)
             .await?;
         Ok(result.rows_affected)
@@ -120,31 +120,31 @@ impl QueryRssLinkRequest {
         Ok(count)
     }
 
-    fn build_query(&self) -> Select<rss_link::Entity> {
-        let mut select = rss_link::Entity::find().inner_join(rss_subscription::Entity);
+    fn build_query(&self) -> Select<feed_link::Entity> {
+        let mut select = feed_link::Entity::find().inner_join(rss_subscription::Entity);
         select = select
             .select_only()
             .columns(vec![
-                rss_link::Column::Id,
-                rss_link::Column::Title,
-                rss_link::Column::Link,
-                rss_link::Column::Description,
-                rss_link::Column::DescPureTxt,
-                rss_link::Column::PublishedAt,
+                feed_link::Column::Id,
+                feed_link::Column::Title,
+                feed_link::Column::Link,
+                feed_link::Column::Description,
+                feed_link::Column::DescPureTxt,
+                feed_link::Column::PublishedAt,
             ])
             // subscrption_id
             .column_as(rss_subscription::Column::Id, "subscrption_id")
-            .column_as(rss_link::Column::Images, "images")
+            .column_as(feed_link::Column::Images, "images")
             // authors 是 authors_json 的解析结果
-            .column_as(rss_link::Column::Authors, "authors");
+            .column_as(feed_link::Column::Authors, "authors");
 
         if let Some(ids) = &self.ids {
             if !ids.is_empty() {
-                select = select.filter(rss_link::Column::Id.is_in(ids.clone()))
+                select = select.filter(feed_link::Column::Id.is_in(ids.clone()))
             }
         }
         if let Some(title) = &self.title {
-            select = select.filter(rss_link::Column::Title.like(format!("%{}%", title)))
+            select = select.filter(feed_link::Column::Title.like(format!("%{}%", title)))
         }
         if let Some(subscription_ids) = &self.subscrption_ids {
             if !subscription_ids.is_empty() {
@@ -153,10 +153,10 @@ impl QueryRssLinkRequest {
         }
 
         if let Some(published_at_lower) = &self.published_at_lower {
-            select = select.filter(rss_link::Column::PublishedAt.gt(*published_at_lower))
+            select = select.filter(feed_link::Column::PublishedAt.gt(*published_at_lower))
         }
         if let Some(published_at_upper) = &self.published_at_upper {
-            select = select.filter(rss_link::Column::PublishedAt.lt(*published_at_upper))
+            select = select.filter(feed_link::Column::PublishedAt.lt(*published_at_upper))
         }
         select
     }

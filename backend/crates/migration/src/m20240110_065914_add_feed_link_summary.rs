@@ -10,7 +10,7 @@ impl MigrationTrait for Migration {
         manager
             .create_table(
                 Table::create()
-                    .table(Alias::new("rss_link_summary"))
+                    .table(Alias::new("feed_link_summary"))
                     .if_not_exists()
                     .col(
                         ColumnDef::new(Alias::new("link_url"))
@@ -48,38 +48,7 @@ impl MigrationTrait for Migration {
             )
             .await?;
 
-        // create mind_map table
-        manager
-            .create_table(
-                Table::create()
-                    .table(Alias::new("rss_link_mind_map"))
-                    .if_not_exists()
-                    .col(
-                        ColumnDef::new(Alias::new("link_url"))
-                            .string_len(32u32)
-                            .primary_key()
-                            .unique_key()
-                            .not_null(),
-                    )
-                    .col(
-                        ColumnDef::new(Alias::new("version"))
-                            .string_len(32u32)
-                            .not_null(),
-                    )
-                    .col(
-                        ColumnDef::new(Alias::new("language"))
-                            .string_len(8u32)
-                            .not_null(),
-                    )
-                    .col(ColumnDef::new(Alias::new("mind_map")).text().not_null())
-                    .col(
-                        ColumnDef::new(Alias::new("create_at"))
-                            .default(Expr::current_timestamp())
-                            .date_time(),
-                    )
-                    .to_owned(),
-            )
-            .await
+        Ok(())
     }
 
     async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
@@ -87,18 +56,11 @@ impl MigrationTrait for Migration {
         manager
             .drop_table(
                 Table::drop()
-                    .table(Alias::new("rss_link_summary"))
+                    .table(Alias::new("feed_link_summary"))
                     .if_exists()
                     .to_owned(),
             )
             .await?;
-        manager
-            .drop_table(
-                Table::drop()
-                    .table(Alias::new("rss_link_mind_map"))
-                    .if_exists()
-                    .to_owned(),
-            )
-            .await
+        Ok(())
     }
 }

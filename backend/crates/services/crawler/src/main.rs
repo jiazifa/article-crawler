@@ -183,7 +183,7 @@ impl Runner {
 
         // define a safe variable to count the number of updated subscriptions and links
         let inserted_links = Arc::new(tokio::sync::Mutex::new(
-            Vec::<lib_entity::rss_link::Model>::new(),
+            Vec::<lib_entity::feed_link::Model>::new(),
         ));
         let conn_origin_arc = Arc::new(tokio::sync::Mutex::new(conn_origin));
         let updated_subscription_count = Arc::new(Mutex::new(0));

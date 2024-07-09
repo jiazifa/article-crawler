@@ -39,7 +39,7 @@ async fn create_links_table(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
     manager
         .create_table(
             Table::create()
-                .table(Alias::new("rss_link"))
+                .table(Alias::new("feed_link"))
                 .if_not_exists()
                 .col(
                     ColumnDef::new(Alias::new("id"))
@@ -326,7 +326,7 @@ async fn create_index(m: &SchemaManager<'_>) -> Result<(), DbErr> {
         Index::create()
             .if_not_exists()
             .name("rss_link_id_index")
-            .table(Alias::new("rss_link"))
+            .table(Alias::new("feed_link"))
             .col(Alias::new("id"))
             .to_owned(),
     )
@@ -336,7 +336,7 @@ async fn create_index(m: &SchemaManager<'_>) -> Result<(), DbErr> {
         Index::create()
             .if_not_exists()
             .name("rss_link_title_index")
-            .table(Alias::new("rss_link"))
+            .table(Alias::new("feed_link"))
             .col(Alias::new("title"))
             .to_owned(),
     )
@@ -346,7 +346,7 @@ async fn create_index(m: &SchemaManager<'_>) -> Result<(), DbErr> {
         Index::create()
             .if_not_exists()
             .name("rss_link_desc_pure_txt_index")
-            .table(Alias::new("rss_link"))
+            .table(Alias::new("feed_link"))
             .col(Alias::new("desc_pure_txt"))
             .to_owned(),
     )
@@ -355,7 +355,7 @@ async fn create_index(m: &SchemaManager<'_>) -> Result<(), DbErr> {
         Index::create()
             .if_not_exists()
             .name("rss_link_description_index")
-            .table(Alias::new("rss_link"))
+            .table(Alias::new("feed_link"))
             .col(Alias::new("description"))
             .to_owned(),
     )
@@ -365,7 +365,7 @@ async fn create_index(m: &SchemaManager<'_>) -> Result<(), DbErr> {
         Index::create()
             .if_not_exists()
             .name("rss_link_link_index")
-            .table(Alias::new("rss_link"))
+            .table(Alias::new("feed_link"))
             .col(Alias::new("link"))
             .to_owned(),
     )
@@ -376,7 +376,7 @@ async fn create_index(m: &SchemaManager<'_>) -> Result<(), DbErr> {
         Index::create()
             .if_not_exists()
             .name("rss_link_images_index")
-            .table(Alias::new("rss_link"))
+            .table(Alias::new("feed_link"))
             .col(Alias::new("images"))
             .to_owned(),
     )
@@ -386,7 +386,7 @@ async fn create_index(m: &SchemaManager<'_>) -> Result<(), DbErr> {
         Index::create()
             .if_not_exists()
             .name("rss_link_authors_index")
-            .table(Alias::new("rss_link"))
+            .table(Alias::new("feed_link"))
             .col(Alias::new("authors"))
             .to_owned(),
     )
@@ -396,7 +396,7 @@ async fn create_index(m: &SchemaManager<'_>) -> Result<(), DbErr> {
         Index::create()
             .if_not_exists()
             .name("rss_link_tags_index")
-            .table(Alias::new("rss_link"))
+            .table(Alias::new("feed_link"))
             .col(Alias::new("tags"))
             .to_owned(),
     )
@@ -407,7 +407,7 @@ async fn create_index(m: &SchemaManager<'_>) -> Result<(), DbErr> {
         Index::create()
             .if_not_exists()
             .name("rss_link_published_at_index")
-            .table(Alias::new("rss_link"))
+            .table(Alias::new("feed_link"))
             .col(Alias::new("published_at"))
             .to_owned(),
     )
@@ -420,7 +420,7 @@ async fn create_index(m: &SchemaManager<'_>) -> Result<(), DbErr> {
 async fn drop_table(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
     println!("开始删除表格----------");
     manager
-        .drop_table(Table::drop().table(Alias::new("rss_link")).to_owned())
+        .drop_table(Table::drop().table(Alias::new("feed_link")).to_owned())
         .await?;
     manager
         .drop_table(

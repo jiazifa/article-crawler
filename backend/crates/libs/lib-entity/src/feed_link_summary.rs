@@ -7,7 +7,7 @@ pub struct Entity;
 
 impl EntityName for Entity {
     fn table_name(&self) -> &str {
-        "rss_link_mind_map"
+        "rss_link_summary"
     }
     fn schema_name(&self) -> Option<&str> {
         // Some("dasv")
@@ -19,11 +19,19 @@ impl EntityName for Entity {
 pub struct Model {
     pub link_url: String,
     // 总结版本
-    pub version: String,
-    // 总结语言
-    pub language: String,
+    pub version: Option<String>,
+    // 总结提供者 (例如 gpt-3.5-turbo)
+    pub provider: Option<String>,
     // 总结要点的json字符
-    pub mind_map: String,
+    pub summary: Option<String>,
+    // 总结语言
+    pub language: Option<String>,
+    // 关键信息点
+    pub key_points: Option<String>,
+    // 行动步骤
+    pub action_items: Option<String>,
+    // 关键词
+    pub keywords: Option<String>,
     // 创建时间
     #[serde(skip)]
     #[serde(serialize_with = "to_milli_ts")]
@@ -34,8 +42,12 @@ pub struct Model {
 pub enum Column {
     LinkUrl,
     Version,
+    Provider,
     Language,
-    MindMap,
+    Summary,
+    KeyPoints,
+    ActionItems,
+    Keywords,
     CreateAt,
 }
 
@@ -57,8 +69,12 @@ impl ColumnTrait for Column {
         match self {
             Self::LinkUrl => ColumnType::String(None).def(),
             Self::Version => ColumnType::String(Some(32u32)).def(),
+            Self::Provider => ColumnType::String(Some(32u32)).def(),
             Self::Language => ColumnType::String(Some(8u32)).def(),
-            Self::MindMap => ColumnType::Text.def(),
+            Self::Summary => ColumnType::String(None).def(),
+            Self::KeyPoints => ColumnType::String(None).def(),
+            Self::ActionItems => ColumnType::String(None).def(),
+            Self::Keywords => ColumnType::String(None).def(),
             Self::CreateAt => ColumnType::DateTime
                 .def()
                 .default(Expr::current_timestamp()),
@@ -74,15 +90,15 @@ pub enum Relation {
 impl RelationTrait for Relation {
     fn def(&self) -> RelationDef {
         match self {
-            Self::Link => Entity::belongs_to(super::rss_link::Entity)
+            Self::Link => Entity::belongs_to(super::feed_link::Entity)
                 .from(Column::LinkUrl)
-                .to(super::rss_link::Column::Link)
+                .to(super::feed_link::Column::Link)
                 .into(),
         }
     }
 }
 
-impl Related<super::rss_link::Entity> for Entity {
+impl Related<super::feed_link::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::Link.def()
     }

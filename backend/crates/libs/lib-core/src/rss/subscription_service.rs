@@ -15,7 +15,7 @@ use crate::{auth, DBConnection};
 use chrono::{DateTime, Datelike, NaiveDateTime, Timelike};
 use lib_crawler::{try_get_all_image_from_html_content, try_get_all_text_from_html_content};
 use lib_entity::{
-    rss_category, rss_link, rss_subscription, rss_subscription_category, rss_subscription_config,
+    feed_build_config, feed_link, rss_category, rss_subscription, rss_subscription_category,
 };
 use lib_utils::math::{get_page_count, get_page_offset};
 use sea_orm::sea_query::{Expr, IntoCondition};
@@ -247,7 +247,7 @@ impl SubscriptionController {
 
         let mut select = rss_subscription::Entity::find()
             .left_join(rss_category::Entity)
-            .left_join(rss_subscription_config::Entity)
+            .left_join(feed_build_config::Entity)
             .join(
                 JoinType::LeftJoin,
                 lib_entity::rss_subscription::Relation::Links.def(),
@@ -257,10 +257,10 @@ impl SubscriptionController {
                 lib_entity::rss_subscription_link::Relation::Link
                     .def()
                     .on_condition(move |_left, right| {
-                        Expr::col(lib_entity::rss_link::Column::PublishedAt)
+                        Expr::col(lib_entity::feed_link::Column::PublishedAt)
                             .gte(week_start_date)
                             .and(
-                                Expr::col(lib_entity::rss_link::Column::PublishedAt)
+                                Expr::col(lib_entity::feed_link::Column::PublishedAt)
                                     .lt(current_date),
                             )
                             .into_condition()
@@ -287,14 +287,14 @@ impl SubscriptionController {
             .group_by(rss_subscription::Column::Id)
             .column_as(Expr::cust("''"), "accent_color")
             .column_as(
-                rss_subscription_config::Column::LastBuildAt.is_not_null(),
+                feed_build_config::Column::LastBuildAt.is_not_null(),
                 "is_completed",
             )
             // sort 字段设置为 -1
             .column_as(rss_subscription::Column::SortOrder, "sort_order")
             .column_as(rss_category::Column::Id, "category_id")
             // article_count_for_this_week 查询本周文章数量
-            .column_as(rss_link::Column::Id.count(), "article_count_for_this_week");
+            .column_as(feed_link::Column::Id.count(), "article_count_for_this_week");
 
         if let Some(ids) = &req.ids {
             if !ids.is_empty() {
@@ -425,10 +425,10 @@ mod tests {
                 lib_entity::rss_subscription_link::Relation::Link
                     .def()
                     .on_condition(move |_left, right| {
-                        Expr::col(lib_entity::rss_link::Column::PublishedAt)
+                        Expr::col(lib_entity::feed_link::Column::PublishedAt)
                             .gte(week_start_date)
                             .and(
-                                Expr::col(lib_entity::rss_link::Column::PublishedAt)
+                                Expr::col(lib_entity::feed_link::Column::PublishedAt)
                                     .lt(current_date),
                             )
                             .into_condition()
@@ -436,7 +436,7 @@ mod tests {
                     .into(),
             )
             .left_join(lib_entity::rss_category::Entity)
-            .left_join(lib_entity::rss_subscription_config::Entity)
+            .left_join(lib_entity::feed_build_config::Entity)
             .filter(lib_entity::rss_subscription::Column::Id.eq(id));
         select = select
             .distinct()
@@ -457,13 +457,13 @@ mod tests {
             ])
             .column_as(rss_category::Column::Id, "category_id")
             .column_as(
-                rss_subscription_config::Column::LastBuildAt.is_not_null(),
+                feed_build_config::Column::LastBuildAt.is_not_null(),
                 "is_completed",
             )
             // sort 字段设置为 -1
             .column_as(rss_subscription::Column::SortOrder, "sort_order")
             // article_count_for_this_week 查询本周文章数量
-            .column_as(rss_link::Column::Id.count(), "article_count_for_this_week")
+            .column_as(feed_link::Column::Id.count(), "article_count_for_this_week")
             .group_by(rss_subscription::Column::Id);
 
         // .column_as(rss_link::Column::Id.count(), "article_count_for_this_week");

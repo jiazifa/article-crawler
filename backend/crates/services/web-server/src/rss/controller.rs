@@ -13,8 +13,8 @@ use lib_core::{
     rss::{
         schema::{
             CategoryModel, CreateAiTokenRecordRequestBuilder, CreateOrUpdateCategoryRequest,
-            CreateOrUpdateSubscriptionRequest, LinkMindMapModel, LinkMindMapRequest, LinkModel,
-            LinkSummaryModel, LinkSummaryRequest, QueryCategoryRequest, QueryRssLinkRequest,
+            CreateOrUpdateSubscriptionRequest, LinkMindMapRequest, LinkModel, LinkSummaryModel,
+            LinkSummaryRequest, QueryCategoryRequest, QueryRssLinkRequest,
             QueryRssLinkRequestBuilder, QuerySubscriptionRequest,
             QuerySubscriptionsWithLinksRequest, SubscriptionModel, UpdateSubscriptionCountRequest,
         },
@@ -237,91 +237,6 @@ async fn summary_rss_link(
         .with_data(summary))
 }
 
-async fn summary_article_mind_map(
-    app: Extension<Arc<AppState>>,
-    Json(req): Json<super::entities::SummaryLinkRequest>,
-) -> Result<APIResponse<LinkMindMapModel>, APIError> {
-    let conn = &app.pool;
-
-    /// 查找是否存在缓存
-    let summary_cache_query = LinkMindMapRequest {
-        link_url: req.link_url.clone(),
-        content: None,
-    };
-    let controller = LinkSummaryController;
-    if let Ok(Some(summary)) = controller
-        .find_mind_map_by_link_url(summary_cache_query.link_url.clone(), conn)
-        .await
-    {
-        // 存在缓存的总结，直接返回
-        return Ok(APIResponse::<LinkMindMapModel>::new()
-            .with_code(200_i32)
-            .with_data(summary.into()));
-    }
-
-    let setting = Setting::global();
-
-    let api_key = match setting.openai.api_key {
-        Some(api_key) => api_key,
-        None => {
-            tracing::error!("summary_rss_link error:{}", "OpenAI API Key 未配置");
-            return Err(ErrorInService::Custom("OpenAI API Key 未配置".to_string()).into());
-        }
-    };
-    let mut openai_config = OpenAIConfig::default().with_api_key(api_key);
-    if let Some(api_base) = setting.openai.api_base {
-        openai_config = openai_config.with_api_base(api_base);
-    }
-    // 如果请求体里面已经包含了文章的正文内容了，则直接使用
-    let content = match req.link_content {
-        Some(content) => content,
-        None => {
-            let js_server_host = match setting.services.js_server_host {
-                Some(js_server_host) => js_server_host,
-                None => {
-                    tracing::error!("summary_rss_link error:{}", "链接解析服务未就绪");
-                    return Err(ErrorInService::Custom("链接解析服务未就绪".to_string()).into());
-                }
-            };
-            let request_url = format!("{}/parse", js_server_host);
-            let resp = reqwest::Client::new()
-                .post(request_url)
-                .json(&json!({ "url": req.link_url }))
-                .send()
-                .await
-                .map_err(|e| {
-                    tracing::error!("summary_rss_link error:{}", e);
-                    ErrorInService::Custom("请求解析链接失败".to_string())
-                })?
-                .json::<serde_json::Value>()
-                .await
-                .map_err(|e| {
-                    tracing::error!("summary_rss_link error:{}", e);
-                    ErrorInService::Custom("解析链接失败".to_string())
-                })?;
-            resp["content"]
-                .as_str()
-                .ok_or_else(|| {
-                    tracing::error!("summary_rss_link error:{}", "链接解析服务返回内容提取失败");
-                    ErrorInService::Custom("链接解析服务返回内容提取失败".to_string())
-                })?
-                .to_string()
-        }
-    };
-
-    let request = LinkMindMapRequest {
-        link_url: req.link_url.clone(),
-        content: Some(content.to_string()),
-    };
-
-    let summary = controller
-        .insert_link_mindmap(openai_config, request, conn)
-        .await?;
-    Ok(APIResponse::<LinkMindMapModel>::new()
-        .with_code(200_i32)
-        .with_data(summary))
-}
-
 pub(crate) fn build_routes() -> axum::Router {
     Router::new()
         // 订阅源
@@ -340,6 +255,4 @@ pub(crate) fn build_routes() -> axum::Router {
         .route_with_tsr("/link/query_count", post(query_rss_links_count))
         // 总结链接
         .route_with_tsr("/link/summary", post(summary_rss_link))
-        // 生成文章的思维导图
-        .route_with_tsr("/link/mindmap", post(summary_article_mind_map))
 }

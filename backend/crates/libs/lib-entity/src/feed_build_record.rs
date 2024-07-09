@@ -31,7 +31,7 @@ pub struct Entity;
 
 impl EntityName for Entity {
     fn table_name(&self) -> &str {
-        "rss_subscription_build_record"
+        "feed_build_record"
     }
     fn schema_name(&self) -> Option<&str> {
         // Some("dasv")

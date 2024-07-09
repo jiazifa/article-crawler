@@ -68,9 +68,9 @@ impl RelationTrait for Relation {
                 .from(Column::SubscriptionId)
                 .to(super::rss_subscription::Column::Id)
                 .into(),
-            Self::Link => Entity::belongs_to(super::rss_link::Entity)
+            Self::Link => Entity::belongs_to(super::feed_link::Entity)
                 .from(Column::LinkId)
-                .to(super::rss_link::Column::Id)
+                .to(super::feed_link::Column::Id)
                 .into(),
         }
     }
@@ -82,7 +82,7 @@ impl Related<super::rss_subscription::Entity> for Entity {
     }
 }
 
-impl Related<super::rss_link::Entity> for Entity {
+impl Related<super::feed_link::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::Link.def()
     }

@@ -1,14 +1,14 @@
 use std::{collections::HashMap, ops::Sub};
 
 use chrono::{NaiveDateTime, Timelike};
-use lib_entity::{rss_subscription, rss_subscription_build_record, rss_subscription_config};
+use lib_entity::{feed_build_config, feed_build_record, rss_subscription};
 use lib_utils::math::{get_page_count, get_page_offset};
 
 use super::{
     schema::{
         InsertSubscriptionRecordRequest, QuerySubscriptionConfigRequest,
         QuerySubscriptionRecordRequest, QuerySubscriptionRecordRequestBuilder,
-        UpdateSubscriptionConfigRequest, UpdateSubscriptionConfigRequestBuilder,
+        UpdateFeedConfigRequest, UpdateFeedConfigRequestBuilder,
     },
     CreateOrUpdateSubscriptionRequest, QueryPreferUpdateSubscriptionRequest,
     SubscriptionBuildSourceType,
@@ -25,19 +25,19 @@ pub struct SubscritionConfigController;
 impl SubscritionConfigController {
     pub async fn insert_subscription_config(
         &self,
-        req: UpdateSubscriptionConfigRequest,
+        req: UpdateFeedConfigRequest,
         conn: &DBConnection,
     ) -> Result<(), ErrorInService> {
-        let origin_model = rss_subscription_config::Entity::find()
-            .filter(rss_subscription_config::Column::SubscriptionId.eq(req.subscription_id))
+        let origin_model = feed_build_config::Entity::find()
+            .filter(feed_build_config::Column::FeedId.eq(req.feed_id))
             .one(conn)
             .await?;
         let need_update = origin_model.is_some();
 
         let mut new_model = match origin_model {
             Some(m) => m.into_active_model(),
-            None => rss_subscription_config::ActiveModel {
-                subscription_id: Set(req.subscription_id),
+            None => feed_build_config::ActiveModel {
+                feed_id: Set(req.feed_id),
                 initial_frequency: Set(req.initial_frequency.clone()),
                 fitted_adaptive: Set(req.fitted_adaptive),
                 ..Default::default()
@@ -85,8 +85,8 @@ impl SubscritionConfigController {
         let req = QuerySubscriptionRecordRequestBuilder::default()
             .subscription_ids(subscription_ids)
             .status(vec![
-                rss_subscription_build_record::Status::Success,
-                rss_subscription_build_record::Status::MostSuccess,
+                feed_build_record::Status::Success,
+                feed_build_record::Status::MostSuccess,
             ])
             .create_time_lower(seven_days_ago)
             .create_time_upper(now)
@@ -103,9 +103,9 @@ impl SubscritionConfigController {
             let create_time = record.created_at;
             let status = record.status;
             match status {
-                rss_subscription_build_record::Status::Faild
-                | rss_subscription_build_record::Status::Unknow
-                | rss_subscription_build_record::Status::FweSuccess => {
+                feed_build_record::Status::Faild
+                | feed_build_record::Status::Unknow
+                | feed_build_record::Status::FweSuccess => {
                     subscription_record_map
                         .entry(subscription_id)
                         .or_insert(vec![])
@@ -156,8 +156,8 @@ impl SubscritionConfigController {
         }
         // 更新订阅源的更新配置
         for (subscription_id, interval) in subscription_update_interval {
-            let mut update_builder = UpdateSubscriptionConfigRequestBuilder::default();
-            update_builder.subscription_id(subscription_id);
+            let mut update_builder = UpdateFeedConfigRequestBuilder::default();
+            update_builder.feed_id(subscription_id);
             update_builder.initial_frequency(3600.0);
 
             update_builder.fitted_frequency(interval);
@@ -196,9 +196,9 @@ impl SubscritionConfigController {
         // 1. 先查询出 LastBuildDate 为空的数据
         let all_count = rss_subscription::Entity::find().count(conn).await?;
         let null_last_build_date_count = rss_subscription::Entity::find()
-            .left_join(rss_subscription_config::Entity)
-            .left_join(rss_subscription_build_record::Entity)
-            .filter(rss_subscription_config::Column::LastBuildAt.is_null())
+            .left_join(feed_build_config::Entity)
+            .left_join(feed_build_record::Entity)
+            .filter(feed_build_config::Column::LastBuildAt.is_null())
             .count(conn)
             .await?;
 
@@ -219,8 +219,8 @@ impl SubscritionConfigController {
         };
 
         let mut select = rss_subscription::Entity::find()
-            .left_join(rss_subscription_config::Entity)
-            .order_by_asc(rss_subscription_config::Column::LastBuildAt)
+            .left_join(feed_build_config::Entity)
+            .order_by_asc(feed_build_config::Column::LastBuildAt)
             .limit(limit_count);
 
         select = select.select();
@@ -242,8 +242,8 @@ impl SubscritionConfigController {
         if let Ok(configs) = self.query_subscription_config(config_req, conn).await {
             let config_map = configs
                 .iter()
-                .map(|c| (c.subscription_id, c.clone()))
-                .collect::<HashMap<i64, rss_subscription_config::Model>>();
+                .map(|c| (c.feed_id, c.clone()))
+                .collect::<HashMap<i64, feed_build_config::Model>>();
 
             reqs.retain(|r| {
                 if let Some(id) = r.id {
@@ -277,8 +277,8 @@ impl SubscritionConfigController {
         &self,
         req: InsertSubscriptionRecordRequest,
         conn: &DBConnection,
-    ) -> Result<rss_subscription_build_record::Model, ErrorInService> {
-        let mut model = rss_subscription_build_record::ActiveModel {
+    ) -> Result<feed_build_record::Model, ErrorInService> {
+        let mut model = feed_build_record::ActiveModel {
             subscription_id: Set(req.subscription_id),
             identifier: Set(uuid::Uuid::new_v4().simple().to_string()),
             ..Default::default()
@@ -300,25 +300,23 @@ impl SubscritionConfigController {
         &self,
         req: QuerySubscriptionRecordRequest,
         conn: &DBConnection,
-    ) -> Result<PageResponse<rss_subscription_build_record::Model>, ErrorInService> {
-        let mut select = rss_subscription_build_record::Entity::find();
+    ) -> Result<PageResponse<feed_build_record::Model>, ErrorInService> {
+        let mut select = feed_build_record::Entity::find();
         if let Some(subscription_ids) = &req.subscription_ids {
             if !subscription_ids.is_empty() {
                 select = select.filter(
-                    rss_subscription_build_record::Column::SubscriptionId
-                        .is_in(subscription_ids.clone()),
+                    feed_build_record::Column::SubscriptionId.is_in(subscription_ids.clone()),
                 );
             }
         }
-        select = select.order_by_desc(rss_subscription_build_record::Column::CreatedAt);
+        select = select.order_by_desc(feed_build_record::Column::CreatedAt);
 
         // filter with time
         if let Some(start_time) = &req.create_time_lower {
-            select =
-                select.filter(rss_subscription_build_record::Column::CreatedAt.gt(*start_time));
+            select = select.filter(feed_build_record::Column::CreatedAt.gt(*start_time));
         }
         if let Some(end_time) = &req.create_time_upper {
-            select = select.filter(rss_subscription_build_record::Column::CreatedAt.lt(*end_time));
+            select = select.filter(feed_build_record::Column::CreatedAt.lt(*end_time));
         }
 
         let page_info = req.page.clone();
@@ -338,13 +336,12 @@ impl SubscritionConfigController {
         &self,
         req: QuerySubscriptionConfigRequest,
         conn: &DBConnection,
-    ) -> Result<Vec<rss_subscription_config::Model>, ErrorInService> {
-        let mut select = rss_subscription_config::Entity::find();
+    ) -> Result<Vec<feed_build_config::Model>, ErrorInService> {
+        let mut select = feed_build_config::Entity::find();
         if let Some(subscription_ids) = &req.subscription_ids {
             if !subscription_ids.is_empty() {
-                select = select.filter(
-                    rss_subscription_config::Column::SubscriptionId.is_in(subscription_ids.clone()),
-                );
+                select = select
+                    .filter(feed_build_config::Column::FeedId.is_in(subscription_ids.clone()));
             }
         }
         let model = select.all(conn).await?;
@@ -391,7 +388,7 @@ mod tests {
         for date in dates.clone() {
             let req = InsertSubscriptionRecordRequest {
                 subscription_id: 1,
-                status: rss_subscription_build_record::Status::Success,
+                status: feed_build_record::Status::Success,
                 create_time: Some(date),
             };
             let record = controller
@@ -420,8 +417,8 @@ mod tests {
     async fn test_insert_subscription_config() {
         let db = crate::test_runner::setup_database().await;
 
-        let req = UpdateSubscriptionConfigRequestBuilder::default()
-            .subscription_id(1)
+        let req = UpdateFeedConfigRequestBuilder::default()
+            .feed_id(1)
             .initial_frequency(1.0)
             .fitted_frequency(1.0)
             .fitted_adaptive(true)
@@ -432,13 +429,13 @@ mod tests {
             .await
             .unwrap();
 
-        let config = rss_subscription_config::Entity::find()
-            .filter(rss_subscription_config::Column::SubscriptionId.eq(1))
+        let config = feed_build_config::Entity::find()
+            .filter(feed_build_config::Column::FeedId.eq(1))
             .one(&db)
             .await
             .unwrap()
             .unwrap();
-        assert_eq!(config.subscription_id, 1);
+        assert_eq!(config.feed_id, 1);
     }
 
     #[tokio::test]
@@ -487,7 +484,7 @@ mod tests {
         // insert update record
         let insert_subscription_record_req = InsertSubscriptionRecordRequestBuilder::default()
             .subscription_id(subscription.id)
-            .status(rss_subscription_build_record::Status::Success)
+            .status(feed_build_record::Status::Success)
             .create_time(one_hour_ago)
             .build()
             .unwrap();
@@ -500,7 +497,7 @@ mod tests {
         // insert update record for now
         let insert_subscription_record_req = InsertSubscriptionRecordRequestBuilder::default()
             .subscription_id(subscription.id)
-            .status(rss_subscription_build_record::Status::Success)
+            .status(feed_build_record::Status::Success)
             .create_time(now)
             .build()
             .unwrap();
@@ -509,8 +506,8 @@ mod tests {
             .await
             .unwrap();
 
-        let insert_subscription_config_req = UpdateSubscriptionConfigRequestBuilder::default()
-            .subscription_id(subscription.id)
+        let insert_subscription_config_req = UpdateFeedConfigRequestBuilder::default()
+            .feed_id(subscription.id)
             .initial_frequency(1.0)
             .fitted_frequency(60.0)
             .fitted_adaptive(true)
@@ -530,8 +527,8 @@ mod tests {
         assert!(!query_preference_update_subscription_res.is_empty());
 
         // 当修改这个配置，时间间隔变长后，应该查询不到
-        let insert_subscription_config_req = UpdateSubscriptionConfigRequestBuilder::default()
-            .subscription_id(subscription.id)
+        let insert_subscription_config_req = UpdateFeedConfigRequestBuilder::default()
+            .feed_id(subscription.id)
             .initial_frequency(1.0)
             .fitted_frequency(100.0)
             .fitted_adaptive(true)

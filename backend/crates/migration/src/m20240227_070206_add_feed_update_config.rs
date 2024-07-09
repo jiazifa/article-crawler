@@ -10,10 +10,10 @@ impl MigrationTrait for Migration {
         manager
             .create_table(
                 Table::create()
-                    .table(Alias::new("rss_subscription_config"))
+                    .table(Alias::new("feed_build_config"))
                     .if_not_exists()
                     .col(
-                        ColumnDef::new(Alias::new("subscription_id"))
+                        ColumnDef::new(Alias::new("feed_id"))
                             .integer()
                             .primary_key()
                             .unique_key()
@@ -59,7 +59,7 @@ impl MigrationTrait for Migration {
         manager
             .drop_table(
                 Table::drop()
-                    .table(Alias::new("rss_subscription_config"))
+                    .table(Alias::new("feed_build_config"))
                     .to_owned(),
             )
             .await?;

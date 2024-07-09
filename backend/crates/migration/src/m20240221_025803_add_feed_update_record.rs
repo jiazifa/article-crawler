@@ -9,7 +9,7 @@ impl MigrationTrait for Migration {
         manager
             .create_table(
                 Table::create()
-                    .table(Alias::new("rss_subscription_build_record"))
+                    .table(Alias::new("feed_build_record"))
                     .if_not_exists()
                     .col(
                         ColumnDef::new(Alias::new("identifier"))
@@ -49,7 +49,7 @@ impl MigrationTrait for Migration {
         manager
             .drop_table(
                 Table::drop()
-                    .table(Alias::new("rss_subscription_build_record"))
+                    .table(Alias::new("feed_build_record"))
                     .to_owned(),
             )
             .await?;

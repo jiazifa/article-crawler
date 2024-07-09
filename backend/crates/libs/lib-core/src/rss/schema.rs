@@ -4,7 +4,7 @@ use crate::rss::SubscriptionBuildSourceType;
 use chrono::naive::serde::ts_milliseconds_option;
 use chrono::NaiveDateTime;
 use lib_crawler::{try_get_all_image_from_html_content, try_get_all_text_from_html_content};
-use lib_entity::{rss_category, rss_subscription_build_record};
+use lib_entity::{feed_build_record, rss_category};
 use sea_orm::FromQueryResult;
 use serde::{Deserialize, Serialize};
 
@@ -165,8 +165,8 @@ pub struct LinkModel {
     pub images: Option<Vec<Image>>,
 }
 
-impl From<lib_entity::rss_link::Model> for LinkModel {
-    fn from(value: lib_entity::rss_link::Model) -> Self {
+impl From<lib_entity::feed_link::Model> for LinkModel {
+    fn from(value: lib_entity::feed_link::Model) -> Self {
         let authors: Option<Vec<Author>> = serde_json::from_str(
             &value
                 .authors
@@ -287,8 +287,8 @@ pub struct LinkSummaryModel {
     pub keywords: Vec<String>,
 }
 
-impl From<lib_entity::rss_link_summary::Model> for LinkSummaryModel {
-    fn from(value: lib_entity::rss_link_summary::Model) -> Self {
+impl From<lib_entity::feed_link_summary::Model> for LinkSummaryModel {
+    fn from(value: lib_entity::feed_link_summary::Model) -> Self {
         // parse str to array
         let key_points = match serde_json::from_str::<Vec<String>>(
             &value.key_points.unwrap_or("[]".to_string()),
@@ -320,29 +320,6 @@ impl From<lib_entity::rss_link_summary::Model> for LinkSummaryModel {
             key_points,
             action_items,
             keywords,
-        }
-    }
-}
-
-/// 链接文章的思维导图
-#[derive(Debug, Clone, Deserialize, Serialize)]
-pub struct LinkMindMapModel {
-    pub link_url: String,
-    // 总结版本
-    pub version: String,
-    // 总结语言
-    pub language: String,
-    // 思维导图的 markdown
-    pub mind_map: String,
-}
-
-impl From<lib_entity::rss_link_mindmap::Model> for LinkMindMapModel {
-    fn from(value: lib_entity::rss_link_mindmap::Model) -> Self {
-        Self {
-            link_url: value.link_url,
-            version: value.version,
-            language: value.language,
-            mind_map: value.mind_map,
         }
     }
 }
@@ -585,7 +562,7 @@ pub struct InsertSubscriptionRecordRequest {
     // 订阅源Id
     pub subscription_id: i64,
     // 状态 表示订阅源此次更新的状态， 成功 / 失败 / 其他 如果是失败，需要记录失败原因
-    pub status: rss_subscription_build_record::Status,
+    pub status: feed_build_record::Status,
     // 创建时间
     pub create_time: Option<NaiveDateTime>,
 }
@@ -597,7 +574,7 @@ pub struct InsertSubscriptionRecordRequest {
 pub struct QuerySubscriptionRecordRequest {
     pub subscription_ids: Option<Vec<i64>>,
     // 状态列表
-    pub status: Option<Vec<rss_subscription_build_record::Status>>,
+    pub status: Option<Vec<feed_build_record::Status>>,
     // 时间范围 低值  毫秒 13 位
     #[serde(default, with = "ts_milliseconds_option")]
     pub create_time_lower: Option<NaiveDateTime>,
@@ -613,8 +590,8 @@ pub struct QuerySubscriptionRecordRequest {
 // 频率的定义: 一般来说，频率是一个浮点数，表示多少分钟更新一次 例如 60.0 表示一小时更新一次 30.0 表示半小时更新一次
 #[builder(setter(into, strip_option), default)]
 #[builder(build_fn(error = "ErrorInService"))]
-pub struct UpdateSubscriptionConfigRequest {
-    pub subscription_id: i64,
+pub struct UpdateFeedConfigRequest {
+    pub feed_id: i64,
     pub initial_frequency: f32,
     pub fitted_frequency: Option<f32>,
     pub fitted_adaptive: bool,

@@ -1,10 +1,9 @@
 use super::schema::{
-    CreateAiTokenRecordRequest, LinkMindMapModel, LinkMindMapRequest, LinkSummaryModel,
-    LinkSummaryRequest,
+    CreateAiTokenRecordRequest, LinkMindMapRequest, LinkSummaryModel, LinkSummaryRequest,
 };
 use crate::error::ErrorInService;
 use crate::DBConnection;
-use lib_entity::{rss_link_mindmap, rss_link_summary};
+use lib_entity::feed_link_summary;
 use lib_openai::{AISummaryController, Config};
 use sea_orm::{entity::*, query::*};
 use serde::Deserialize;
@@ -76,14 +75,14 @@ impl LinkSummaryController {
         req: UpdateLinkSummaryRequest,
         conn: &DBConnection,
     ) -> Result<LinkSummaryModel, ErrorInService> {
-        let query = rss_link_summary::Entity::find()
-            .filter(rss_link_summary::Column::LinkUrl.eq(req.link_url.clone()));
+        let query = feed_link_summary::Entity::find()
+            .filter(feed_link_summary::Column::LinkUrl.eq(req.link_url.clone()));
 
         let summary = query.one(conn).await.map_err(ErrorInService::DBError)?;
         let should_update = summary.is_some();
         let mut new_model = match summary {
             Some(m) => m.into_active_model(),
-            None => rss_link_summary::ActiveModel {
+            None => feed_link_summary::ActiveModel {
                 link_url: Set(req.link_url.clone()),
                 version: Set(Some("1".to_string())),
                 ..Default::default()
@@ -109,45 +108,13 @@ impl LinkSummaryController {
 }
 
 impl LinkSummaryController {
-    async fn insert_link_mindmap_db(
-        &self,
-        req: UpdateLinkMindMapRequest,
-        conn: &DBConnection,
-    ) -> Result<rss_link_mindmap::Model, ErrorInService> {
-        let query = rss_link_mindmap::Entity::find()
-            .filter(rss_link_mindmap::Column::LinkUrl.eq(req.link_url.clone()));
-
-        let mind_map = query.one(conn).await.map_err(ErrorInService::DBError)?;
-        let should_update = mind_map.is_some();
-        let mut new_model = match mind_map {
-            Some(m) => m.into_active_model(),
-            None => rss_link_mindmap::ActiveModel {
-                link_url: Set(req.link_url.clone()),
-                version: Set("1".to_string()),
-                ..Default::default()
-            },
-        };
-        new_model.mind_map = Set(req.mind_map.clone());
-        if let Some(ref l) = req.language {
-            new_model.language = Set(l.clone());
-        }
-
-        let updated = match should_update {
-            true => new_model.update(conn).await?,
-            false => new_model.insert(conn).await?,
-        };
-        Ok(updated)
-    }
-}
-
-impl LinkSummaryController {
     pub async fn find_summary_by_link_url(
         &self,
         link_url: String,
         conn: &DBConnection,
-    ) -> Result<Option<rss_link_summary::Model>, ErrorInService> {
-        let query =
-            rss_link_summary::Entity::find().filter(rss_link_summary::Column::LinkUrl.eq(link_url));
+    ) -> Result<Option<feed_link_summary::Model>, ErrorInService> {
+        let query = feed_link_summary::Entity::find()
+            .filter(feed_link_summary::Column::LinkUrl.eq(link_url));
 
         let summary = query.one(conn).await.map_err(ErrorInService::DBError)?;
         Ok(summary)
@@ -196,58 +163,6 @@ impl LinkSummaryController {
         };
         let summary = self.insert_link_summary_db(req, conn).await?;
         Ok(summary)
-    }
-}
-
-impl LinkSummaryController {
-    pub async fn find_mind_map_by_link_url(
-        &self,
-        link_url: String,
-        conn: &DBConnection,
-    ) -> Result<Option<rss_link_mindmap::Model>, ErrorInService> {
-        let query = rss_link_mindmap::Entity::find()
-            .filter(rss_link_mindmap::Column::LinkUrl.eq(link_url.clone()));
-
-        let mind_map = query.one(conn).await.map_err(ErrorInService::DBError)?;
-        Ok(mind_map)
-    }
-
-    pub async fn insert_link_mindmap<C>(
-        &self,
-        config: C,
-        req: LinkMindMapRequest,
-        conn: &DBConnection,
-    ) -> Result<LinkMindMapModel, ErrorInService>
-    where
-        C: Config,
-    {
-        // 首先尝试查找摘要
-        let mind_map = self
-            .find_mind_map_by_link_url(req.link_url.clone(), conn)
-            .await?;
-        // 存在缓存的总结，直接返回
-        if let Some(m) = mind_map {
-            return Ok(m.into());
-        }
-        let content = match req.content {
-            None => {
-                return Err(ErrorInService::Custom(
-                    "link summary content is empty".to_string(),
-                ))
-            }
-            Some(ref c) => c.clone(),
-        };
-        let controller = AISummaryController::new(config);
-        let mind_map = controller.article_mindmap(content).await.map_err(|e| {
-            ErrorInService::Custom(format!("openai extract article mindmap failed:{}", e))
-        })?;
-        let req = UpdateLinkMindMapRequest {
-            link_url: req.link_url.clone(),
-            language: mind_map.language,
-            mind_map: mind_map.mind_map,
-        };
-        let mind_map = self.insert_link_mindmap_db(req, conn).await?;
-        Ok(mind_map.into())
     }
 }
 

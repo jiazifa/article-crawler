@@ -8,7 +8,7 @@ pub struct Entity;
 
 impl EntityName for Entity {
     fn table_name(&self) -> &str {
-        "rss_link"
+        "feed_link"
     }
     fn schema_name(&self) -> Option<&str> {
         // Some("dasv")
@@ -104,29 +104,21 @@ impl ColumnTrait for Column {
 #[derive(Copy, Clone, Debug, EnumIter)]
 pub enum Relation {
     Summary,
-    MindMap,
     Subscriptions,
 }
 
 impl RelationTrait for Relation {
     fn def(&self) -> RelationDef {
         match self {
-            Self::Summary => Entity::has_one(super::rss_link_summary::Entity).into(),
-            Self::MindMap => Entity::has_one(super::rss_link_mindmap::Entity).into(),
+            Self::Summary => Entity::has_one(super::feed_link_summary::Entity).into(),
             Self::Subscriptions => Entity::has_many(super::rss_subscription::Entity).into(),
         }
     }
 }
 
-impl Related<super::rss_link_summary::Entity> for Entity {
+impl Related<super::feed_link_summary::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::Summary.def()
-    }
-}
-
-impl Related<super::rss_link_mindmap::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::MindMap.def()
     }
 }
 
