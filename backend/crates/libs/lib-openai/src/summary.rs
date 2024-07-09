@@ -38,11 +38,11 @@ impl<C: Config> AISummaryController<C> {
 impl<C: Config> AISummaryController<C> {
     fn prefer_model_for_context_size(&self, messages: &[ChatCompletionRequestMessage]) -> String {
         let model_context_mapping: &[(&str, usize)] = &[
-            ("gpt-3.5-turbo-1106", 3000),  // 4k
-            ("gpt-3.5-turbo-1106", 14000), // 16k
-            ("gpt-4-32k-0613", 28000),     // 32k
+            ("gpt-3.5-turbo", 3000),  // 4k
+            ("gpt-3.5-turbo", 14000), // 16k
+            ("gpt-4o", 28000),        // 32k
         ];
-        let mut prefer_model = "gpt-3.5-turbo-1106";
+        let mut prefer_model = "gpt-3.5-turbo";
         for (model, context_size) in model_context_mapping {
             prefer_model = model;
             let num_tokens = self.num_tokens_with_messages(model, messages).unwrap_or(0);
@@ -308,7 +308,7 @@ mod test {
             ));
         }
         let model = controller.prefer_model_for_context_size(&messages);
-        assert_eq!(model, "gpt-3.5-turbo-1106");
+        assert_eq!(model, "gpt-3.5-turbo");
 
         for _ in 0..3000 {
             messages.push(ChatCompletionRequestMessage::User(
@@ -321,7 +321,7 @@ mod test {
             ));
         }
         let model = controller.prefer_model_for_context_size(&messages);
-        assert_eq!(model, "gpt-4-32k-0613");
+        assert_eq!(model, "gpt-4o");
     }
 
     #[tokio::test]

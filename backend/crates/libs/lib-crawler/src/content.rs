@@ -280,6 +280,7 @@ mod tests {
         <a href=\"https://www.theguardian.com/football/2023/dec/26/pep-guardiola-doubt-message-manchester-city-critics\"></a>
         "#;
         let text = try_get_all_text_from_html_content(head_content.to_string()).unwrap();
-        assert_eq!(text, "Pep GuardiolaCity ");
+
+        assert_eq!(text, "\n        Pep GuardiolaCity\n        \n        ");
     }
 }

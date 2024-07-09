@@ -246,13 +246,26 @@ impl SubscriptionController {
             .with_second(0);
 
         let mut select = rss_subscription::Entity::find()
-            .left_join(rss_link::Entity)
             .left_join(rss_category::Entity)
             .left_join(rss_subscription_config::Entity)
-            .filter(
-                rss_link::Column::PublishedAt
-                    .gt(week_start_date)
-                    .and(rss_link::Column::PublishedAt.lt(current_date)),
+            .join(
+                JoinType::LeftJoin,
+                lib_entity::rss_subscription::Relation::Links.def(),
+            )
+            .join(
+                JoinType::LeftJoin,
+                lib_entity::rss_subscription_link::Relation::Link
+                    .def()
+                    .on_condition(move |_left, right| {
+                        Expr::col(lib_entity::rss_link::Column::PublishedAt)
+                            .gte(week_start_date)
+                            .and(
+                                Expr::col(lib_entity::rss_link::Column::PublishedAt)
+                                    .lt(current_date),
+                            )
+                            .into_condition()
+                    })
+                    .into(),
             );
 
         // 查询 `SubscriptionModel` 的所有字段
@@ -279,6 +292,7 @@ impl SubscriptionController {
             )
             // sort 字段设置为 -1
             .column_as(rss_subscription::Column::SortOrder, "sort_order")
+            .column_as(rss_category::Column::Id, "category_id")
             // article_count_for_this_week 查询本周文章数量
             .column_as(rss_link::Column::Id.count(), "article_count_for_this_week");
 
@@ -318,7 +332,6 @@ impl SubscriptionController {
             .await
             .unwrap_or(0);
         let page_count = get_page_count(all_count, page_size);
-        // print raw sql for debug
 
         let models = select
             .into_model::<schema::SubscriptionModel>()
@@ -405,7 +418,11 @@ mod tests {
         let mut select = lib_entity::rss_subscription::Entity::find()
             .join(
                 JoinType::LeftJoin,
-                lib_entity::rss_subscription::Relation::Links
+                lib_entity::rss_subscription::Relation::Links.def(),
+            )
+            .join(
+                JoinType::LeftJoin,
+                lib_entity::rss_subscription_link::Relation::Link
                     .def()
                     .on_condition(move |_left, right| {
                         Expr::col(lib_entity::rss_link::Column::PublishedAt)
@@ -420,14 +437,43 @@ mod tests {
             )
             .left_join(lib_entity::rss_category::Entity)
             .left_join(lib_entity::rss_subscription_config::Entity)
-            // .filter(
-            //     rss_link::Column::PublishedAt
-            //         .gt(week_start_date)
-            //         .and(rss_link::Column::PublishedAt.lt(current_date)),
-            // )
             .filter(lib_entity::rss_subscription::Column::Id.eq(id));
+        select = select
+            .distinct()
+            .select_only()
+            .columns([
+                rss_subscription::Column::Id,
+                rss_subscription::Column::Title,
+                rss_subscription::Column::Description,
+                rss_subscription::Column::Link,
+                rss_subscription::Column::SiteLink,
+                rss_subscription::Column::VisualUrl,
+                rss_subscription::Column::Logo,
+                rss_subscription::Column::Language,
+                rss_subscription::Column::SortOrder,
+                rss_subscription::Column::Rating,
+                rss_subscription::Column::CreatedAt,
+                rss_subscription::Column::UpdatedAt,
+            ])
+            .column_as(rss_category::Column::Id, "category_id")
+            .column_as(
+                rss_subscription_config::Column::LastBuildAt.is_not_null(),
+                "is_completed",
+            )
+            // sort 字段设置为 -1
+            .column_as(rss_subscription::Column::SortOrder, "sort_order")
+            // article_count_for_this_week 查询本周文章数量
+            .column_as(rss_link::Column::Id.count(), "article_count_for_this_week")
+            .group_by(rss_subscription::Column::Id);
+
+        // .column_as(rss_link::Column::Id.count(), "article_count_for_this_week");
+
         println!("sql: {}", select.build(conn.get_database_backend()));
-        let models = select.all(&conn).await.unwrap();
+        let models = select
+            .into_model::<crate::rss::schema::SubscriptionModel>()
+            .all(&conn)
+            .await
+            .unwrap();
 
         assert_eq!(models.len(), 1);
     }

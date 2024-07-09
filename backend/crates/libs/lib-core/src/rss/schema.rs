@@ -13,8 +13,6 @@ use serde::{Deserialize, Serialize};
 pub struct SubscriptionModel {
     // id
     pub id: i64,
-    // 唯一标识
-    pub identifier: String,
     // 标题
     pub title: String,
     // Rss 链接地址
@@ -74,7 +72,6 @@ impl FromQueryResult for SubscriptionModel {
         let mut model_builder = SubscriptionModelBuilder::default();
         let model = model_builder
             .id(res.try_get(pre, "id")?)
-            .identifier(res.try_get(pre, "identifier")?)
             .title(res.try_get(pre, "title")?)
             .link(res.try_get(pre, "link")?)
             .category_id(res.try_get(pre, "category_id")?)

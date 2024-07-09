@@ -181,7 +181,6 @@ impl SubscritionConfigController {
         req: QueryPreferUpdateSubscriptionRequest,
         conn: &DBConnection,
     ) -> Result<Vec<CreateOrUpdateSubscriptionRequest>, ErrorInService> {
-        let mut select = rss_subscription::Entity::find();
         // 首先将 LastBuildDate 为空的全部查出来
         // 根据总数量, 计算出需要更新的数量
         // 然后根据时间排序, 时间越近的排在后面, 取出需要更新的数量
@@ -197,6 +196,7 @@ impl SubscritionConfigController {
         // 1. 先查询出 LastBuildDate 为空的数据
         let all_count = rss_subscription::Entity::find().count(conn).await?;
         let null_last_build_date_count = rss_subscription::Entity::find()
+            .left_join(rss_subscription_config::Entity)
             .left_join(rss_subscription_build_record::Entity)
             .filter(rss_subscription_config::Column::LastBuildAt.is_null())
             .count(conn)
@@ -206,13 +206,22 @@ impl SubscritionConfigController {
             0 => 0,
             _ => {
                 null_last_build_date_count
-                    + (all_count - null_last_build_date_count) / req.expect_update_times as u64
+                    .checked_sub(
+                        all_count
+                            .checked_sub(null_last_build_date_count)
+                            .unwrap_or(0),
+                    )
+                    .unwrap_or(0)
+                    .checked_div(req.expect_update_times as u64)
+                    .unwrap_or(0)
+                    + null_last_build_date_count
             }
         };
 
-        select = select.limit(limit_count);
-
-        select = select.order_by_asc(rss_subscription_config::Column::LastBuildAt);
+        let mut select = rss_subscription::Entity::find()
+            .left_join(rss_subscription_config::Entity)
+            .order_by_asc(rss_subscription_config::Column::LastBuildAt)
+            .limit(limit_count);
 
         select = select.select();
         let models = select.all(conn).await?;
@@ -221,7 +230,11 @@ impl SubscritionConfigController {
             .map(|m| m.clone().into())
             .collect::<Vec<CreateOrUpdateSubscriptionRequest>>();
 
-        println!("发现可能需要更新的订阅源数量: {}", reqs.len());
+        tracing::info!(
+            "期望{}次更新完，发现可能需要更新的订阅源数量: {}",
+            req.expect_update_times,
+            reqs.len()
+        );
         // 过滤掉不需要更新的订阅源
         // 查询 订阅源配置
         let now = chrono::Utc::now().naive_utc();
@@ -535,6 +548,6 @@ mod tests {
             .query_prefer_update_subscription(query_preference_update_subscription_req, &conn)
             .await
             .unwrap();
-        assert!(query_preference_update_subscription_res.is_empty());
+        assert_eq!(query_preference_update_subscription_res.len(), 1);
     }
 }
