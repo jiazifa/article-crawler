@@ -8,7 +8,7 @@ pub struct Entity;
 
 impl EntityName for Entity {
     fn table_name(&self) -> &str {
-        "rss_subscription"
+        "feed_subscription"
     }
     fn schema_name(&self) -> Option<&str> {
         // Some("dasv")
@@ -116,10 +116,10 @@ pub enum Relation {
 impl RelationTrait for Relation {
     fn def(&self) -> RelationDef {
         match self {
-            Self::Category => Entity::has_many(super::rss_category::Entity).into(),
+            Self::Category => Entity::has_many(super::feed_category::Entity).into(),
             Self::UpdateRecords => Entity::has_many(super::feed_build_record::Entity).into(),
             Self::UpdateConfig => Entity::has_one(super::feed_build_config::Entity).into(),
-            Self::Links => Entity::has_many(super::rss_subscription_link::Entity).into(),
+            Self::Links => Entity::has_many(super::feed_subscription_link_ref::Entity).into(),
         }
     }
 }
@@ -136,14 +136,14 @@ impl Related<super::feed_build_config::Entity> for Entity {
     }
 }
 
-impl Related<super::rss_category::Entity> for Entity {
+impl Related<super::feed_category::Entity> for Entity {
     fn to() -> RelationDef {
-        super::rss_subscription_category::Relation::Category.def()
+        super::feed_subscription_category_ref::Relation::Category.def()
     }
 
     fn via() -> Option<RelationDef> {
         Some(
-            super::rss_subscription_category::Relation::Subscription
+            super::feed_subscription_category_ref::Relation::Subscription
                 .def()
                 .rev(),
         )
@@ -152,12 +152,12 @@ impl Related<super::rss_category::Entity> for Entity {
 
 impl Related<super::feed_link::Entity> for Entity {
     fn to() -> RelationDef {
-        super::rss_subscription_link::Relation::Link.def()
+        super::feed_subscription_link_ref::Relation::Link.def()
     }
 
     fn via() -> Option<RelationDef> {
         Some(
-            super::rss_subscription_link::Relation::Subscription
+            super::feed_subscription_link_ref::Relation::Subscription
                 .def()
                 .rev(),
         )

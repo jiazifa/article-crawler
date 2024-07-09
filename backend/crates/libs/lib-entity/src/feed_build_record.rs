@@ -117,15 +117,15 @@ pub enum Relation {
 impl RelationTrait for Relation {
     fn def(&self) -> RelationDef {
         match self {
-            Self::Subscription => Entity::belongs_to(super::rss_subscription::Entity)
+            Self::Subscription => Entity::belongs_to(super::feed_subscription::Entity)
                 .from(Column::SubscriptionId)
-                .to(super::rss_subscription::Column::Id)
+                .to(super::feed_subscription::Column::Id)
                 .into(),
         }
     }
 }
 
-impl Related<super::rss_subscription::Entity> for Entity {
+impl Related<super::feed_subscription::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::Subscription.def()
     }

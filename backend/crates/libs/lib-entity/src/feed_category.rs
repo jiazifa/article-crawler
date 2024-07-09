@@ -8,7 +8,7 @@ pub struct Entity;
 
 impl EntityName for Entity {
     fn table_name(&self) -> &str {
-        "rss_category"
+        "feed_category"
     }
     fn schema_name(&self) -> Option<&str> {
         // Some("dasv")
@@ -88,14 +88,14 @@ impl RelationTrait for Relation {
     }
 }
 
-impl Related<super::rss_subscription::Entity> for Entity {
+impl Related<super::feed_subscription::Entity> for Entity {
     fn to() -> RelationDef {
-        super::rss_subscription_category::Relation::Subscription.def()
+        super::feed_subscription_category_ref::Relation::Subscription.def()
     }
 
     fn via() -> Option<RelationDef> {
         Some(
-            super::rss_subscription_category::Relation::Category
+            super::feed_subscription_category_ref::Relation::Category
                 .def()
                 .rev(),
         )

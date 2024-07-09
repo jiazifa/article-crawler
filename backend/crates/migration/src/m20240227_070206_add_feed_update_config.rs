@@ -13,7 +13,7 @@ impl MigrationTrait for Migration {
                     .table(Alias::new("feed_build_config"))
                     .if_not_exists()
                     .col(
-                        ColumnDef::new(Alias::new("feed_id"))
+                        ColumnDef::new(Alias::new("subscription_id"))
                             .integer()
                             .primary_key()
                             .unique_key()

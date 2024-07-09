@@ -15,7 +15,7 @@ use crate::{auth, DBConnection};
 use chrono::{DateTime, Datelike, NaiveDateTime, Timelike};
 use lib_crawler::{try_get_all_image_from_html_content, try_get_all_text_from_html_content};
 use lib_entity::{
-    feed_build_config, feed_link, rss_category, rss_subscription, rss_subscription_category,
+    feed_build_config, feed_category, feed_link, feed_subscription, feed_subscription_category_ref,
 };
 use lib_utils::math::{get_page_count, get_page_offset};
 use sea_orm::sea_query::{Expr, IntoCondition};
@@ -172,13 +172,13 @@ impl SubscriptionController {
     ) -> Result<(bool, i64), ErrorInService> {
         let query = match req.id.clone() {
             Some(id) => {
-                rss_subscription::Entity::find().filter(rss_subscription::Column::Id.eq(id))
+                feed_subscription::Entity::find().filter(feed_subscription::Column::Id.eq(id))
             }
-            None => rss_subscription::Entity::find()
+            None => feed_subscription::Entity::find()
                 // 通过 `rss_subscriptions_category` 表查询关联的 `category_id`
-                .left_join(rss_category::Entity)
-                .filter(rss_subscription::Column::Link.eq(req.link.clone()))
-                .filter(rss_category::Column::Id.eq(req.category_id)),
+                .left_join(feed_category::Entity)
+                .filter(feed_subscription::Column::Link.eq(req.link.clone()))
+                .filter(feed_category::Column::Id.eq(req.category_id)),
         };
 
         let subscription = query.one(conn).await.map_err(ErrorInService::DBError)?;
@@ -192,7 +192,7 @@ impl SubscriptionController {
         }
         let mut new_model = match subscription {
             Some(m) => m.into_active_model(),
-            None => rss_subscription::ActiveModel {
+            None => feed_subscription::ActiveModel {
                 ..Default::default()
             },
         };
@@ -213,7 +213,7 @@ impl SubscriptionController {
                 let m = new_model.insert(conn).await?;
                 // 使用更简洁的方式处理 Option 类型
                 let category_id = req.category_id.unwrap_or(0); // 假设 0 是一个合理的默认值，否则应该使用更合适的错误处理
-                let relation_data = rss_subscription_category::ActiveModel {
+                let relation_data = feed_subscription_category_ref::ActiveModel {
                     category_id: Set(category_id),
                     subscription_id: Set(m.id.clone()),
                     ..Default::default()
@@ -245,16 +245,16 @@ impl SubscriptionController {
             .unwrap_or(current_date)
             .with_second(0);
 
-        let mut select = rss_subscription::Entity::find()
-            .left_join(rss_category::Entity)
+        let mut select = feed_subscription::Entity::find()
+            .left_join(feed_category::Entity)
             .left_join(feed_build_config::Entity)
             .join(
                 JoinType::LeftJoin,
-                lib_entity::rss_subscription::Relation::Links.def(),
+                lib_entity::feed_subscription::Relation::Links.def(),
             )
             .join(
                 JoinType::LeftJoin,
-                lib_entity::rss_subscription_link::Relation::Link
+                lib_entity::feed_subscription_link_ref::Relation::Link
                     .def()
                     .on_condition(move |_left, right| {
                         Expr::col(lib_entity::feed_link::Column::PublishedAt)
@@ -273,26 +273,26 @@ impl SubscriptionController {
             .select_only()
             .distinct()
             .columns([
-                rss_subscription::Column::Id,
-                rss_subscription::Column::Title,
-                rss_subscription::Column::Description,
-                rss_subscription::Column::Link,
-                rss_subscription::Column::SiteLink,
-                rss_subscription::Column::VisualUrl,
-                rss_subscription::Column::Logo,
-                rss_subscription::Column::Language,
-                rss_subscription::Column::SortOrder,
-                rss_subscription::Column::Rating,
+                feed_subscription::Column::Id,
+                feed_subscription::Column::Title,
+                feed_subscription::Column::Description,
+                feed_subscription::Column::Link,
+                feed_subscription::Column::SiteLink,
+                feed_subscription::Column::VisualUrl,
+                feed_subscription::Column::Logo,
+                feed_subscription::Column::Language,
+                feed_subscription::Column::SortOrder,
+                feed_subscription::Column::Rating,
             ])
-            .group_by(rss_subscription::Column::Id)
+            .group_by(feed_subscription::Column::Id)
             .column_as(Expr::cust("''"), "accent_color")
             .column_as(
                 feed_build_config::Column::LastBuildAt.is_not_null(),
                 "is_completed",
             )
             // sort 字段设置为 -1
-            .column_as(rss_subscription::Column::SortOrder, "sort_order")
-            .column_as(rss_category::Column::Id, "category_id")
+            .column_as(feed_subscription::Column::SortOrder, "sort_order")
+            .column_as(feed_category::Column::Id, "category_id")
             // article_count_for_this_week 查询本周文章数量
             .column_as(feed_link::Column::Id.count(), "article_count_for_this_week");
 
@@ -300,15 +300,15 @@ impl SubscriptionController {
             if !ids.is_empty() {
                 // 去重后查询
                 let ids_set: HashSet<i64> = ids.iter().cloned().collect();
-                select = select.filter(rss_subscription::Column::Id.is_in(ids_set.clone()))
+                select = select.filter(feed_subscription::Column::Id.is_in(ids_set.clone()))
             }
         }
 
         if let Some(title) = &req.title {
-            select = select.filter(rss_subscription::Column::Title.like(format!("%{}%", title)))
+            select = select.filter(feed_subscription::Column::Title.like(format!("%{}%", title)))
         }
         if let Some(category_id) = &req.category_id {
-            select = select.filter(rss_category::Column::Id.eq(*category_id))
+            select = select.filter(feed_category::Column::Id.eq(*category_id))
         }
         let page_info = req
             .page
@@ -320,14 +320,14 @@ impl SubscriptionController {
 
         // 根据时间排序, 默认是降序
         select = select
-            .order_by_desc(rss_subscription::Column::UpdatedAt)
+            .order_by_desc(feed_subscription::Column::UpdatedAt)
             .limit(page_size)
             .offset(offset)
             .select();
 
-        let all_count = rss_subscription::Entity::find()
+        let all_count = feed_subscription::Entity::find()
             .select_only()
-            .column(rss_subscription::Column::Id)
+            .column(feed_subscription::Column::Id)
             .count(conn)
             .await
             .unwrap_or(0);
@@ -415,14 +415,14 @@ mod tests {
             .with_second(0);
 
         // simple query
-        let mut select = lib_entity::rss_subscription::Entity::find()
+        let mut select = lib_entity::feed_subscription::Entity::find()
             .join(
                 JoinType::LeftJoin,
-                lib_entity::rss_subscription::Relation::Links.def(),
+                lib_entity::feed_subscription::Relation::Links.def(),
             )
             .join(
                 JoinType::LeftJoin,
-                lib_entity::rss_subscription_link::Relation::Link
+                lib_entity::feed_subscription_link_ref::Relation::Link
                     .def()
                     .on_condition(move |_left, right| {
                         Expr::col(lib_entity::feed_link::Column::PublishedAt)
@@ -435,36 +435,36 @@ mod tests {
                     })
                     .into(),
             )
-            .left_join(lib_entity::rss_category::Entity)
+            .left_join(lib_entity::feed_category::Entity)
             .left_join(lib_entity::feed_build_config::Entity)
-            .filter(lib_entity::rss_subscription::Column::Id.eq(id));
+            .filter(lib_entity::feed_subscription::Column::Id.eq(id));
         select = select
             .distinct()
             .select_only()
             .columns([
-                rss_subscription::Column::Id,
-                rss_subscription::Column::Title,
-                rss_subscription::Column::Description,
-                rss_subscription::Column::Link,
-                rss_subscription::Column::SiteLink,
-                rss_subscription::Column::VisualUrl,
-                rss_subscription::Column::Logo,
-                rss_subscription::Column::Language,
-                rss_subscription::Column::SortOrder,
-                rss_subscription::Column::Rating,
-                rss_subscription::Column::CreatedAt,
-                rss_subscription::Column::UpdatedAt,
+                feed_subscription::Column::Id,
+                feed_subscription::Column::Title,
+                feed_subscription::Column::Description,
+                feed_subscription::Column::Link,
+                feed_subscription::Column::SiteLink,
+                feed_subscription::Column::VisualUrl,
+                feed_subscription::Column::Logo,
+                feed_subscription::Column::Language,
+                feed_subscription::Column::SortOrder,
+                feed_subscription::Column::Rating,
+                feed_subscription::Column::CreatedAt,
+                feed_subscription::Column::UpdatedAt,
             ])
-            .column_as(rss_category::Column::Id, "category_id")
+            .column_as(feed_category::Column::Id, "category_id")
             .column_as(
                 feed_build_config::Column::LastBuildAt.is_not_null(),
                 "is_completed",
             )
             // sort 字段设置为 -1
-            .column_as(rss_subscription::Column::SortOrder, "sort_order")
+            .column_as(feed_subscription::Column::SortOrder, "sort_order")
             // article_count_for_this_week 查询本周文章数量
             .column_as(feed_link::Column::Id.count(), "article_count_for_this_week")
-            .group_by(rss_subscription::Column::Id);
+            .group_by(feed_subscription::Column::Id);
 
         // .column_as(rss_link::Column::Id.count(), "article_count_for_this_week");
 

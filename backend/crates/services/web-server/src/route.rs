@@ -4,10 +4,10 @@ use axum::{
 };
 use axum_extra::routing::RouterExt;
 
-use crate::{account, rss};
+use crate::{account, feed};
 
 pub fn build_routes() -> Router {
     Router::new()
-        .nest("/rss", rss::controller::build_routes())
+        .nest("/rss", feed::controller::build_routes())
         .nest("/account", account::controller::build_routes())
 }

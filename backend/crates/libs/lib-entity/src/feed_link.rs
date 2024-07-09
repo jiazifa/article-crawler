@@ -111,7 +111,7 @@ impl RelationTrait for Relation {
     fn def(&self) -> RelationDef {
         match self {
             Self::Summary => Entity::has_one(super::feed_link_summary::Entity).into(),
-            Self::Subscriptions => Entity::has_many(super::rss_subscription::Entity).into(),
+            Self::Subscriptions => Entity::has_many(super::feed_subscription::Entity).into(),
         }
     }
 }
@@ -122,13 +122,17 @@ impl Related<super::feed_link_summary::Entity> for Entity {
     }
 }
 
-impl Related<super::rss_subscription::Entity> for Entity {
+impl Related<super::feed_subscription::Entity> for Entity {
     fn to() -> RelationDef {
-        super::rss_subscription_link::Relation::Subscription.def()
+        super::feed_subscription_link_ref::Relation::Subscription.def()
     }
 
     fn via() -> Option<RelationDef> {
-        Some(super::rss_subscription_link::Relation::Link.def().rev())
+        Some(
+            super::feed_subscription_link_ref::Relation::Link
+                .def()
+                .rev(),
+        )
     }
 }
 

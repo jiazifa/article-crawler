@@ -21,10 +21,10 @@ use tower_http::{
 
 mod account;
 mod api_error;
+mod feed;
 mod middlewares;
 mod response;
 mod route;
-mod rss;
 mod utils;
 use lib_utils::Setting;
 

@@ -369,7 +369,7 @@ async fn main() -> anyhow::Result<()> {
     }
     println!("开始加载分类");
 
-    let category_dir = "fixture/rss/categories";
+    let category_dir = "fixture/feed/categories";
     let categories = match load_categories_from_dir(category_dir.to_string(), &conn).await {
         Ok(categories) => categories,
         Err(e) => {
@@ -379,7 +379,7 @@ async fn main() -> anyhow::Result<()> {
     };
 
     tracing::info!("开始加载订阅源");
-    let subscription_dir = "fixture/rss/feeds";
+    let subscription_dir = "fixture/feed/subscriptions";
     match load_subscriptions_from_dir(subscription_dir.to_string(), categories, &conn).await {
         Ok(_) => {
             tracing::info!("加载订阅源成功");

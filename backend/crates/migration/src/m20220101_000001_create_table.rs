@@ -88,7 +88,7 @@ async fn create_subscription_table(manager: &SchemaManager<'_>) -> Result<(), Db
     manager
         .create_table(
             Table::create()
-                .table(Alias::new("rss_subscription"))
+                .table(Alias::new("feed_subscription"))
                 .if_not_exists()
                 .col(
                     ColumnDef::new(Alias::new("id"))
@@ -138,7 +138,7 @@ async fn create_category_table(manager: &SchemaManager<'_>) -> Result<(), DbErr>
     manager
         .create_table(
             Table::create()
-                .table(Alias::new("rss_category"))
+                .table(Alias::new("feed_category"))
                 .if_not_exists()
                 .col(
                     ColumnDef::new(Alias::new("id"))
@@ -167,13 +167,13 @@ async fn create_category_table(manager: &SchemaManager<'_>) -> Result<(), DbErr>
         .await
 }
 
-// 创建中间表，用于关联 rss_link 和 rss_subscription, rss_subscription 和 rss_category
+// 创建中间表，用于关联 rss_link 和 rss_subscription, rss_subscription 和 feed_category
 async fn create_middle_table(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
     // 创建 rss_link 和 rss_subscription 中间表, 通过 subscrption_id 关联
     manager
         .create_table(
             Table::create()
-                .table(Alias::new("rss_subscription_link"))
+                .table(Alias::new("feed_subscription_link_ref"))
                 .if_not_exists()
                 .col(
                     ColumnDef::new(Alias::new("id"))
@@ -190,20 +190,23 @@ async fn create_middle_table(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
                 )
                 .foreign_key(
                     &mut ForeignKey::create()
-                        .name("rss_subscription_link_link_id_fk")
-                        .from(Alias::new("rss_subscription_link"), Alias::new("link_id"))
-                        .to(Alias::new("rss_link"), Alias::new("id"))
+                        .name("feed_subscription_link_ref_link_id_fk")
+                        .from(
+                            Alias::new("feed_subscription_link_ref"),
+                            Alias::new("link_id"),
+                        )
+                        .to(Alias::new("feed_link"), Alias::new("id"))
                         .on_delete(ForeignKeyAction::Cascade)
                         .on_update(ForeignKeyAction::Cascade),
                 )
                 .foreign_key(
                     &mut ForeignKey::create()
-                        .name("rss_subscription_link_subscription_id_fk")
+                        .name("feed_subscription_link_ref_subscription_id_fk")
                         .from(
-                            Alias::new("rss_subscription_link"),
+                            Alias::new("feed_subscription_link_ref"),
                             Alias::new("subscription_id"),
                         )
-                        .to(Alias::new("rss_subscription"), Alias::new("id"))
+                        .to(Alias::new("feed_subscription"), Alias::new("id"))
                         .on_delete(ForeignKeyAction::Cascade)
                         .on_update(ForeignKeyAction::Cascade),
                 )
@@ -211,11 +214,11 @@ async fn create_middle_table(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
         )
         .await?;
 
-    // 创建 rss_subscription 和 rss_category 中间表, 通过 category_id 关联
+    // 创建 rss_subscription 和 feed_category 中间表, 通过 category_id 关联
     manager
         .create_table(
             Table::create()
-                .table(Alias::new("rss_subscription_category"))
+                .table(Alias::new("feed_subscription_category_ref"))
                 .if_not_exists()
                 .col(
                     ColumnDef::new(Alias::new("id"))
@@ -236,23 +239,23 @@ async fn create_middle_table(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
                 )
                 .foreign_key(
                     &mut ForeignKey::create()
-                        .name("rss_subscription_category_subscrption_id_fk")
+                        .name("rss_subscription_category_ref_subscrption_id_fk")
                         .from(
-                            Alias::new("rss_subscription_category"),
+                            Alias::new("feed_subscription_category_ref"),
                             Alias::new("subscription_id"),
                         ) // 注意这里是当前表的列名
-                        .to(Alias::new("rss_subscription"), Alias::new("id")) // 这里是外部表及其列名
+                        .to(Alias::new("feed_subscription"), Alias::new("id")) // 这里是外部表及其列名
                         .on_delete(ForeignKeyAction::Cascade)
                         .on_update(ForeignKeyAction::Cascade),
                 )
                 .foreign_key(
                     &mut ForeignKey::create()
-                        .name("rss_subscription_category_category_id_fk")
+                        .name("feed_subscription_category_ref_category_id_fk")
                         .from(
-                            Alias::new("rss_subscription_category"),
+                            Alias::new("feed_subscription_category_ref"),
                             Alias::new("category_id"),
                         )
-                        .to(Alias::new("rss_category"), Alias::new("id"))
+                        .to(Alias::new("feed_category"), Alias::new("id"))
                         .on_delete(ForeignKeyAction::Cascade)
                         .on_update(ForeignKeyAction::Cascade),
                 )
@@ -266,76 +269,76 @@ async fn create_middle_table(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
 // - MARK: 创建索引
 //  创建索引
 async fn create_index(m: &SchemaManager<'_>) -> Result<(), DbErr> {
-    // 创建 rss_subscription 和 rss_category 索引
+    // 创建 feed_category 和 feed_category 索引
 
-    // create index for rss_category id
+    // create index for feed_category id
     m.create_index(
         Index::create()
             .if_not_exists()
-            .name("rss_category_id_index")
-            .table(Alias::new("rss_category"))
+            .name("feed_category_id_index")
+            .table(Alias::new("feed_category"))
             .col(Alias::new("id"))
             .to_owned(),
     )
     .await?;
 
-    // create index for rss_category title
+    // create index for feed_category title
     m.create_index(
         Index::create()
             .if_not_exists()
-            .name("rss_category_title_index")
-            .table(Alias::new("rss_category"))
+            .name("feed_category_title_index")
+            .table(Alias::new("feed_category"))
             .col(Alias::new("title"))
             .to_owned(),
     )
     .await?;
 
-    // create index for rss_subscription id
+    // create index for feed_subscription id
     m.create_index(
         Index::create()
             .if_not_exists()
-            .name("rss_subscription_id_index")
-            .table(Alias::new("rss_subscription"))
+            .name("feed_subscription_id_index")
+            .table(Alias::new("feed_subscription"))
             .col(Alias::new("id"))
             .to_owned(),
     )
     .await?;
-    // create index for rss_subscription title
+    // create index for feed_subscription title
     m.create_index(
         Index::create()
             .if_not_exists()
-            .name("rss_subscription_title_index")
-            .table(Alias::new("rss_subscription"))
+            .name("feed_subscription_title_index")
+            .table(Alias::new("feed_subscription"))
             .col(Alias::new("title"))
             .to_owned(),
     )
     .await?;
-    // create index for rss_subscription link
+    // create index for feed_subscription link
     m.create_index(
         Index::create()
             .if_not_exists()
-            .name("rss_subscription_link_index")
-            .table(Alias::new("rss_subscription"))
+            .name("feed_subscription_link_index")
+            .table(Alias::new("feed_subscription"))
             .col(Alias::new("link"))
             .to_owned(),
     )
     .await?;
 
-    // create index for rss_link id
+    // create index for feed_link id
     m.create_index(
         Index::create()
             .if_not_exists()
-            .name("rss_link_id_index")
+            .name("feed_link_id_index")
             .table(Alias::new("feed_link"))
             .col(Alias::new("id"))
             .to_owned(),
     )
     .await?;
-    // create index for rss_link title
+    // create index for feed_link title
     m.create_index(
         Index::create()
             .if_not_exists()
-            .name("rss_link_title_index")
+            .name("feed_link_title_index")
             .table(Alias::new("feed_link"))
             .col(Alias::new("title"))
             .to_owned(),
@@ -345,7 +348,7 @@ async fn create_index(m: &SchemaManager<'_>) -> Result<(), DbErr> {
     m.create_index(
         Index::create()
             .if_not_exists()
-            .name("rss_link_desc_pure_txt_index")
+            .name("feed_link_desc_pure_txt_index")
             .table(Alias::new("feed_link"))
             .col(Alias::new("desc_pure_txt"))
             .to_owned(),
@@ -354,7 +357,7 @@ async fn create_index(m: &SchemaManager<'_>) -> Result<(), DbErr> {
     m.create_index(
         Index::create()
             .if_not_exists()
-            .name("rss_link_description_index")
+            .name("feed_link_description_index")
             .table(Alias::new("feed_link"))
             .col(Alias::new("description"))
             .to_owned(),
@@ -364,7 +367,7 @@ async fn create_index(m: &SchemaManager<'_>) -> Result<(), DbErr> {
     m.create_index(
         Index::create()
             .if_not_exists()
-            .name("rss_link_link_index")
+            .name("feed_link_link_index")
             .table(Alias::new("feed_link"))
             .col(Alias::new("link"))
             .to_owned(),
@@ -375,7 +378,7 @@ async fn create_index(m: &SchemaManager<'_>) -> Result<(), DbErr> {
     m.create_index(
         Index::create()
             .if_not_exists()
-            .name("rss_link_images_index")
+            .name("feed_link_images_index")
             .table(Alias::new("feed_link"))
             .col(Alias::new("images"))
             .to_owned(),
@@ -385,7 +388,7 @@ async fn create_index(m: &SchemaManager<'_>) -> Result<(), DbErr> {
     m.create_index(
         Index::create()
             .if_not_exists()
-            .name("rss_link_authors_index")
+            .name("feed_link_authors_index")
             .table(Alias::new("feed_link"))
             .col(Alias::new("authors"))
             .to_owned(),
@@ -395,7 +398,7 @@ async fn create_index(m: &SchemaManager<'_>) -> Result<(), DbErr> {
     m.create_index(
         Index::create()
             .if_not_exists()
-            .name("rss_link_tags_index")
+            .name("feed_link_tags_index")
             .table(Alias::new("feed_link"))
             .col(Alias::new("tags"))
             .to_owned(),
@@ -406,7 +409,7 @@ async fn create_index(m: &SchemaManager<'_>) -> Result<(), DbErr> {
     m.create_index(
         Index::create()
             .if_not_exists()
-            .name("rss_link_published_at_index")
+            .name("feed_link_published_at_index")
             .table(Alias::new("feed_link"))
             .col(Alias::new("published_at"))
             .to_owned(),
@@ -425,25 +428,25 @@ async fn drop_table(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
     manager
         .drop_table(
             Table::drop()
-                .table(Alias::new("rss_subscription"))
+                .table(Alias::new("feed_subscription"))
                 .to_owned(),
         )
         .await?;
     manager
-        .drop_table(Table::drop().table(Alias::new("rss_category")).to_owned())
+        .drop_table(Table::drop().table(Alias::new("feed_category")).to_owned())
         .await?;
     // 移除中间表
     manager
         .drop_table(
             Table::drop()
-                .table(Alias::new("rss_subscription_link"))
+                .table(Alias::new("feed_subscription_link_ref"))
                 .to_owned(),
         )
         .await?;
     manager
         .drop_table(
             Table::drop()
-                .table(Alias::new("rss_subscription_category"))
+                .table(Alias::new("feed_subscription_category_ref"))
                 .to_owned(),
         )
         .await?;

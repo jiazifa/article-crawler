@@ -7,7 +7,7 @@ use crate::error::ErrorInService;
 
 use crate::DBConnection;
 use chrono::NaiveDateTime;
-use lib_entity::{feed_link, rss_subscription};
+use lib_entity::{feed_link, feed_subscription};
 use lib_utils::math::{get_page_count, get_page_offset};
 use sea_orm::{entity::*, query::*};
 use serde::Deserialize;
@@ -24,9 +24,9 @@ impl LinkController {
         let query = match req.id.clone() {
             Some(id) => feed_link::Entity::find().filter(feed_link::Column::Id.eq(id)),
             None => feed_link::Entity::find()
-                .left_join(rss_subscription::Entity)
+                .left_join(feed_subscription::Entity)
                 .filter(feed_link::Column::Link.eq(req.link.clone()))
-                .filter(rss_subscription::Column::Id.eq(req.subscrption_id)),
+                .filter(feed_subscription::Column::Id.eq(req.subscrption_id)),
         };
         // 执行查找
         let link = query.one(conn).await.map_err(ErrorInService::DBError)?;
@@ -121,7 +121,7 @@ impl QueryRssLinkRequest {
     }
 
     fn build_query(&self) -> Select<feed_link::Entity> {
-        let mut select = feed_link::Entity::find().inner_join(rss_subscription::Entity);
+        let mut select = feed_link::Entity::find().inner_join(feed_subscription::Entity);
         select = select
             .select_only()
             .columns(vec![
@@ -133,7 +133,7 @@ impl QueryRssLinkRequest {
                 feed_link::Column::PublishedAt,
             ])
             // subscrption_id
-            .column_as(rss_subscription::Column::Id, "subscrption_id")
+            .column_as(feed_subscription::Column::Id, "subscrption_id")
             .column_as(feed_link::Column::Images, "images")
             // authors 是 authors_json 的解析结果
             .column_as(feed_link::Column::Authors, "authors");
@@ -148,7 +148,8 @@ impl QueryRssLinkRequest {
         }
         if let Some(subscription_ids) = &self.subscrption_ids {
             if !subscription_ids.is_empty() {
-                select = select.filter(rss_subscription::Column::Id.is_in(subscription_ids.clone()))
+                select =
+                    select.filter(feed_subscription::Column::Id.is_in(subscription_ids.clone()))
             }
         }
 

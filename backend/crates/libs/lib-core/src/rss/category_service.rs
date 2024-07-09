@@ -6,7 +6,7 @@ use super::schema::{self, CreateOrUpdateCategoryRequest, QueryCategoryRequest};
 use crate::error::ErrorInService;
 
 use crate::DBConnection;
-use lib_entity::rss_category;
+use lib_entity::feed_category;
 use lib_utils::math::{get_page_count, get_page_offset};
 use sea_orm::{entity::*, query::*};
 use serde::Deserialize;
@@ -20,16 +20,16 @@ impl CategoryController {
         conn: &DBConnection,
     ) -> Result<schema::CategoryModel, ErrorInService> {
         let query = match req.id.clone() {
-            Some(idf) => rss_category::Entity::find().filter(rss_category::Column::Id.eq(idf)),
-            None => rss_category::Entity::find()
-                .filter(rss_category::Column::Title.eq(req.title.clone())),
+            Some(idf) => feed_category::Entity::find().filter(feed_category::Column::Id.eq(idf)),
+            None => feed_category::Entity::find()
+                .filter(feed_category::Column::Title.eq(req.title.clone())),
         };
 
         let category = query.one(conn).await.map_err(ErrorInService::DBError)?;
         let prefer_update = category.is_some();
         let mut new_model = match category {
             Some(m) => m.into_active_model(),
-            None => rss_category::ActiveModel {
+            None => feed_category::ActiveModel {
                 ..Default::default()
             },
         };
@@ -52,28 +52,28 @@ impl CategoryController {
     where
         C: ConnectionTrait,
     {
-        let mut select = rss_category::Entity::find();
+        let mut select = feed_category::Entity::find();
         if let Some(ids) = &req.ids {
             if !ids.is_empty() {
-                select = select.filter(rss_category::Column::Id.is_in(ids.clone()))
+                select = select.filter(feed_category::Column::Id.is_in(ids.clone()))
             }
         }
         if let Some(title) = &req.title {
-            select = select.filter(rss_category::Column::Title.like(format!("%{}%", title)))
+            select = select.filter(feed_category::Column::Title.like(format!("%{}%", title)))
         }
         if let Some(description) = &req.description {
             select =
-                select.filter(rss_category::Column::Description.like(format!("%{}%", description)))
+                select.filter(feed_category::Column::Description.like(format!("%{}%", description)))
         }
         if let Some(parent_ids) = &req.parent_ids {
             if !parent_ids.is_empty() {
-                select = select.filter(rss_category::Column::ParentId.is_in(parent_ids.clone()))
+                select = select.filter(feed_category::Column::ParentId.is_in(parent_ids.clone()))
             }
         }
 
         // 根据Sort order 和时间 排序
-        select = select.order_by_desc(rss_category::Column::SortOrder);
-        select = select.order_by_desc(rss_category::Column::UpdatedAt);
+        select = select.order_by_desc(feed_category::Column::SortOrder);
+        select = select.order_by_desc(feed_category::Column::UpdatedAt);
 
         let mut models = select
             .into_model()

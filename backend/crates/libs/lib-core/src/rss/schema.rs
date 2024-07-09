@@ -4,7 +4,7 @@ use crate::rss::SubscriptionBuildSourceType;
 use chrono::naive::serde::ts_milliseconds_option;
 use chrono::NaiveDateTime;
 use lib_crawler::{try_get_all_image_from_html_content, try_get_all_text_from_html_content};
-use lib_entity::{feed_build_record, rss_category};
+use lib_entity::{feed_build_record, feed_category};
 use sea_orm::FromQueryResult;
 use serde::{Deserialize, Serialize};
 
@@ -385,8 +385,8 @@ impl FromQueryResult for CategoryModel {
     }
 }
 
-impl From<rss_category::Model> for CategoryModel {
-    fn from(value: rss_category::Model) -> Self {
+impl From<feed_category::Model> for CategoryModel {
+    fn from(value: feed_category::Model) -> Self {
         Self {
             id: value.id,
             title: value.title,
@@ -474,8 +474,8 @@ pub struct CreateOrUpdateSubscriptionRequest {
     pub sort_order: Option<i32>,
 }
 
-impl From<lib_entity::rss_subscription::Model> for CreateOrUpdateSubscriptionRequest {
-    fn from(value: lib_entity::rss_subscription::Model) -> Self {
+impl From<lib_entity::feed_subscription::Model> for CreateOrUpdateSubscriptionRequest {
+    fn from(value: lib_entity::feed_subscription::Model) -> Self {
         let mut req = CreateOrUpdateSubscriptionRequestBuilder::default();
 
         req.id(value.id);
@@ -590,8 +590,8 @@ pub struct QuerySubscriptionRecordRequest {
 // 频率的定义: 一般来说，频率是一个浮点数，表示多少分钟更新一次 例如 60.0 表示一小时更新一次 30.0 表示半小时更新一次
 #[builder(setter(into, strip_option), default)]
 #[builder(build_fn(error = "ErrorInService"))]
-pub struct UpdateFeedConfigRequest {
-    pub feed_id: i64,
+pub struct UpdateSubscriptionConfigRequest {
+    pub subscription_id: i64,
     pub initial_frequency: f32,
     pub fitted_frequency: Option<f32>,
     pub fitted_adaptive: bool,

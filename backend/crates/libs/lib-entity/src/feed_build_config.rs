@@ -31,7 +31,7 @@ impl EntityName for Entity {
 #[derive(Clone, Debug, PartialEq, DeriveModel, DeriveActiveModel, Serialize)]
 pub struct Model {
     // 订阅源Id
-    pub feed_id: i64,
+    pub subscription_id: i64,
     // 初始频率
     pub initial_frequency: f32,
     // 自适应 频率
@@ -53,7 +53,7 @@ impl Model {
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveColumn)]
 pub enum Column {
-    FeedId,
+    SubscriptionId,
     InitialFrequency,
     FittedFrequency,
     FittedAdaptive,
@@ -63,7 +63,7 @@ pub enum Column {
 
 #[derive(Copy, Clone, Debug, EnumIter, DerivePrimaryKey)]
 pub enum PrimaryKey {
-    FeedId,
+    SubscriptionId,
 }
 
 impl PrimaryKeyTrait for PrimaryKey {
@@ -77,7 +77,7 @@ impl ColumnTrait for Column {
     type EntityName = Entity;
     fn def(&self) -> ColumnDef {
         match self {
-            Self::FeedId => ColumnType::Integer.def(),
+            Self::SubscriptionId => ColumnType::Integer.def(),
             Self::InitialFrequency => ColumnType::Float.def(),
             Self::FittedFrequency => ColumnType::Float.def().nullable(),
             Self::FittedAdaptive => ColumnType::Boolean.def(),
@@ -95,15 +95,15 @@ pub enum Relation {
 impl RelationTrait for Relation {
     fn def(&self) -> RelationDef {
         match self {
-            Self::Subscription => Entity::belongs_to(super::rss_subscription::Entity)
-                .from(Column::FeedId)
-                .to(super::rss_subscription::Column::Id)
+            Self::Subscription => Entity::belongs_to(super::feed_subscription::Entity)
+                .from(Column::SubscriptionId)
+                .to(super::feed_subscription::Column::Id)
                 .into(),
         }
     }
 }
 
-impl Related<super::rss_subscription::Entity> for Entity {
+impl Related<super::feed_subscription::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::Subscription.def()
     }
