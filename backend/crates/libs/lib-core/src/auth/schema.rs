@@ -3,7 +3,7 @@ use chrono::naive::serde::ts_milliseconds_option::serialize as to_milli_tsopt;
 use chrono::NaiveDateTime;
 use serde::{Deserialize, Serialize};
 
-use lib_entity::rss_account::{Gender, Model as AccountModelInDB};
+use lib_entity::account::{Gender, Model as AccountModelInDB};
 use sea_orm::FromQueryResult;
 
 // 用于传递给外部的整理过的订阅源数据
@@ -50,7 +50,7 @@ impl FromQueryResult for AccountModel {
 }
 
 impl From<AccountModelInDB> for AccountModel {
-    fn from(value: lib_entity::rss_account::Model) -> Self {
+    fn from(value: lib_entity::account::Model) -> Self {
         AccountModel {
             id: value.id,
             nick_name: value.nick_name,

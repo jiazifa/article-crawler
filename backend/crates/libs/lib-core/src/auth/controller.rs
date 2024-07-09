@@ -1,4 +1,4 @@
-use lib_entity::rss_account;
+use lib_entity::account;
 
 use crate::{error::ErrorInService, DBConnection};
 
@@ -22,8 +22,7 @@ impl AccountController {
         req: RegisterAccountRequest,
         conn: &DBConnection,
     ) -> Result<AccountModel, ErrorInService> {
-        let query =
-            rss_account::Entity::find().filter(rss_account::Column::Email.eq(&req.email.clone()));
+        let query = account::Entity::find().filter(account::Column::Email.eq(&req.email.clone()));
         let account = query.one(conn).await.map_err(ErrorInService::DBError)?;
         if account.is_some() {
             return Err(ErrorInService::Custom("account already exists".to_string()));
@@ -32,7 +31,7 @@ impl AccountController {
         let hashed_password_dist = md5::compute(req.password.as_bytes());
         let hashed_password = format!("{:x}", hashed_password_dist);
         // add new account
-        let new_account = rss_account::ActiveModel {
+        let new_account = account::ActiveModel {
             email: Set(Some(req.email)),
             nick_name: Set(req.nick_name.clone()),
             password: Set(Some(hashed_password)),
@@ -49,7 +48,7 @@ impl AccountController {
         conn: &DBConnection,
     ) -> Result<LoginAccountResponse, ErrorInService> {
         // query if account exists
-        let query = rss_account::Entity::find().filter(rss_account::Column::Email.eq(&req.email));
+        let query = account::Entity::find().filter(account::Column::Email.eq(&req.email));
         let account = query.one(conn).await.map_err(ErrorInService::DBError)?;
         let account = account.ok_or(ErrorInService::Custom("account not found".to_string()))?;
         // check password
@@ -74,8 +73,8 @@ impl AccountController {
         account_id: i64,
         conn: &DBConnection,
     ) -> Result<Option<AccountModel>, ErrorInService> {
-        let model = rss_account::Entity::find()
-            .filter(rss_account::Column::Id.eq(account_id))
+        let model = account::Entity::find()
+            .filter(account::Column::Id.eq(account_id))
             .one(conn)
             .await
             .map_err(ErrorInService::DBError)?;
@@ -88,8 +87,8 @@ impl AccountController {
         req: QueryAccountByIDRequest,
         conn: &DBConnection,
     ) -> Result<Option<AccountModel>, ErrorInService> {
-        let model = rss_account::Entity::find()
-            .filter(rss_account::Column::Id.eq(req.id))
+        let model = account::Entity::find()
+            .filter(account::Column::Id.eq(req.id))
             .into_model()
             .one(conn)
             .await

@@ -101,12 +101,12 @@ pub enum Relation {
 impl RelationTrait for Relation {
     fn def(&self) -> RelationDef {
         match self {
-            Self::Token => Entity::has_one(super::rss_account_token::Entity).into(),
+            Self::Token => Entity::has_one(super::account_token::Entity).into(),
         }
     }
 }
 
-impl Related<super::rss_account_token::Entity> for Entity {
+impl Related<super::account_token::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::Token.def()
     }

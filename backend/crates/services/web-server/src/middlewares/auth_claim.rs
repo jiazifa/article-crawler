@@ -21,7 +21,7 @@ use lib_core::{
     },
     DBConnection,
 };
-use lib_entity::rss_account;
+use lib_entity::account;
 use lib_utils::Setting;
 use serde::{Deserialize, Serialize};
 

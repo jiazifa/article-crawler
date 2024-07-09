@@ -9,7 +9,7 @@ impl MigrationTrait for Migration {
         manager
             .create_table(
                 Table::create()
-                    .table(Alias::new("rss_account"))
+                    .table(Alias::new("account"))
                     .if_not_exists()
                     .col(
                         ColumnDef::new(Alias::new("id"))
@@ -81,7 +81,7 @@ impl MigrationTrait for Migration {
         manager
             .create_table(
                 Table::create()
-                    .table(Alias::new("rss_account_token"))
+                    .table(Alias::new("account_token"))
                     .if_not_exists()
                     .col(
                         ColumnDef::new(Alias::new("account_id"))
@@ -107,7 +107,7 @@ impl MigrationTrait for Migration {
         manager
             .drop_table(
                 Table::drop()
-                    .table(Alias::new("rss_account"))
+                    .table(Alias::new("account"))
                     .if_exists()
                     .to_owned(),
             )
@@ -115,7 +115,7 @@ impl MigrationTrait for Migration {
         manager
             .drop_table(
                 Table::drop()
-                    .table(Alias::new("rss_account_token"))
+                    .table(Alias::new("account_token"))
                     .if_exists()
                     .to_owned(),
             )
