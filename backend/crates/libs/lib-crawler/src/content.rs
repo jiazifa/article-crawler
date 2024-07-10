@@ -175,7 +175,17 @@ pub fn try_get_all_image_from_html_content(content: String) -> Result<Vec<String
 
     Ok(images)
 }
-
+/// # Examples
+///
+/// ``` rust
+/// let head_content = r#"
+/// <ul></ul>
+/// <p>Pep Guardiola<a href=\"https://www.theguardian.com/football/2023/dec/22/manchester-city-fluminense-club-world-cup-final-match-report\">City</p>
+/// <a href=\"https://www.theguardian.com/football/2023/dec/26/pep-guardiola-doubt-message-manchester-city-critics\"></a>
+/// "#;
+/// let text = try_get_all_text_from_html_content(head_content.to_string()).unwrap();
+/// assert_eq!(text, "\n        Pep GuardiolaCity\n        \n        ");
+/// ```
 pub fn try_get_all_text_from_html_content(html_content: String) -> Result<String, anyhow::Error> {
     let html = Html::parse_document(&html_content);
     let mut text_content = "".to_string();
@@ -256,8 +266,7 @@ mod tests {
         assert_eq!(metadata.image().unwrap(), "test image");
     }
 
-    #[tokio::test]
-    async fn test_get_images_from_url_content() {
+    fn test_get_images_from_url_content() {
         let head_content = r#"
         <div>
         <img src="test image 1">
@@ -272,8 +281,7 @@ mod tests {
         assert_eq!(images[2], "test image 3");
     }
 
-    #[tokio::test]
-    async fn test_get_txt_from_url_content() {
+    fn test_get_txt_from_url_content() {
         let head_content = r#"
         <ul></ul>
         <p>Pep Guardiola<a href=\"https://www.theguardian.com/football/2023/dec/22/manchester-city-fluminense-club-world-cup-final-match-report\">City</p>

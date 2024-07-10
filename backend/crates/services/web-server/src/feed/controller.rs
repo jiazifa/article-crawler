@@ -10,7 +10,7 @@ use axum_extra::routing::RouterExt;
 use lib_core::{
     common_schema::{PageRequest, PageResponse},
     error::ErrorInService,
-    rss::{
+    feed::{
         schema::{
             CategoryModel, CreateAiTokenRecordRequestBuilder, CreateOrUpdateCategoryRequest,
             CreateOrUpdateSubscriptionRequest, LinkMindMapRequest, LinkModel, LinkSummaryModel,

@@ -39,7 +39,7 @@ impl SubscritionConfigController {
             None => feed_build_config::ActiveModel {
                 subscription_id: Set(req.subscription_id),
                 initial_frequency: Set(req.initial_frequency.clone()),
-                fitted_adaptive: Set(req.fitted_adaptive),
+                fitted_adaptive: Set(Some(req.fitted_adaptive)),
                 ..Default::default()
             },
         };
@@ -355,7 +355,7 @@ impl SubscritionConfigController {
 mod tests {
     use crate::{
         common_schema::PageRequest,
-        rss::{
+        feed::{
             category_service::CategoryController, schema::InsertSubscriptionRecordRequestBuilder,
             subscription_service::SubscriptionController,
         },
@@ -449,7 +449,7 @@ mod tests {
         let one_hour_ago = now - chrono::Duration::hours(1);
         let category_controller = CategoryController;
         let insert_category_req =
-            crate::rss::schema::CreateOrUpdateCategoryRequestBuilder::default()
+            crate::feed::schema::CreateOrUpdateCategoryRequestBuilder::default()
                 .title("test")
                 .build()
                 .unwrap();
@@ -460,7 +460,7 @@ mod tests {
         let subs_update_controller = SubscritionConfigController;
         let subs_controller = SubscriptionController;
         let insert_subscription_req =
-            crate::rss::schema::CreateOrUpdateSubscriptionRequestBuilder::default()
+            crate::feed::schema::CreateOrUpdateSubscriptionRequestBuilder::default()
                 .category_id(category.id)
                 .link("http://www.baidu.com")
                 .title("baidu")
@@ -472,10 +472,11 @@ mod tests {
             .insert_subscription(insert_subscription_req, &conn)
             .await
             .unwrap();
-        let query_subscription_req = crate::rss::schema::QuerySubscriptionRequestBuilder::default()
-            .ids(vec![sub_model.1])
-            .build()
-            .unwrap();
+        let query_subscription_req =
+            crate::feed::schema::QuerySubscriptionRequestBuilder::default()
+                .ids(vec![sub_model.1])
+                .build()
+                .unwrap();
         let query_subscription_res = subs_controller
             .query_subscription(query_subscription_req, &conn)
             .await

@@ -1,7 +1,7 @@
 use std::collections::{BTreeMap, HashSet};
 
 use crate::common_schema::{PageRequest, PageRequestBuilder, PageResponse};
-use crate::rss::link_service::LinkController;
+use crate::feed::link_service::LinkController;
 
 use super::schema::{
     self, Author, CreateOrUpdateRssLinkRequest, CreateOrUpdateRssLinkRequestBuilder,
@@ -14,9 +14,7 @@ use crate::error::ErrorInService;
 use crate::{auth, DBConnection};
 use chrono::{DateTime, Datelike, NaiveDateTime, Timelike};
 use lib_crawler::{try_get_all_image_from_html_content, try_get_all_text_from_html_content};
-use lib_entity::{
-    feed_build_config, feed_category, feed_link, feed_subscription, feed_subscription_category_ref,
-};
+use lib_entity::{feed_build_config, feed_category, feed_link, feed_subscription};
 use lib_utils::math::{get_page_count, get_page_offset};
 use sea_orm::sea_query::{Expr, IntoCondition};
 use sea_orm::DbBackend;
@@ -27,144 +25,6 @@ use tokio::sync::TryAcquireError;
 pub struct SubscriptionController;
 
 impl SubscriptionController {
-    // 从url中解析订阅源
-    pub async fn parser_rss_from_url<T: AsRef<str>>(
-        &self,
-        url: T,
-    ) -> Result<SubscriptionWithLinksResp, ErrorInService> {
-        let rss = lib_crawler::fetch_rss_from_url(url.as_ref())
-            .await
-            .map_err(|e| ErrorInService::Custom(format!("解析RSS失败:{}", e)))?;
-        let mut links: Vec<CreateOrUpdateRssLinkRequest> = Vec::new();
-        let pub_date = match rss.pub_date() {
-            Some(d) => match dateparser::parse(d) {
-                Ok(d) => Some(d.to_utc().naive_utc()),
-                Err(_) => None,
-            },
-            None => None,
-        };
-        let language = rss.language().map(|l| l.to_string());
-
-        let mut subscription_req = CreateOrUpdateSubscriptionRequestBuilder::default();
-        subscription_req.title(rss.title().to_string());
-
-        subscription_req.description(rss.description().to_string());
-        subscription_req.link(url.as_ref().to_string());
-        subscription_req.site_link(rss.link().to_string());
-        if let Some(value) = pub_date {
-            subscription_req.pub_date(value);
-        }
-        if let Some(value) = language {
-            subscription_req.language(value);
-        }
-        let subscription = subscription_req.clone().build()?;
-
-        let current_timestamp = chrono::Utc::now().timestamp();
-        rss.items().iter().for_each(|item| {
-            if let Some(item_link) = item.link() {
-                let pub_date = match item.pub_date() {
-                    Some(d) => match dateparser::parse(d) {
-                        Ok(d) => Some(d.naive_utc()), // 包装在Some中
-                        Err(_) => DateTime::from_timestamp(current_timestamp, 0)
-                            .and_then(|d| Some(d.to_utc().naive_utc())),
-                        // 修改这里，确保返回Option
-                    },
-                    None => DateTime::from_timestamp(current_timestamp, 0)
-                        .and_then(|d| Some(d.to_utc().naive_utc())),
-                };
-                let ext = item.extensions();
-                let mut ext_map: BTreeMap<String, Vec<rss::extension::Extension>> = BTreeMap::new();
-                if let Some(e_map) = ext.get("ext") {
-                    ext_map = e_map.to_owned();
-                }
-                let authors_json = match ext_map.get("authors") {
-                    Some(authors) => {
-                        let mut authors_j = Vec::new();
-                        // insert from extension's attr
-                        authors.iter().for_each(|author| {
-                            let attr = author.attrs();
-                            authors_j.push(attr);
-                        });
-                        serde_json::to_string(&authors_j).ok()
-                    }
-                    None => None,
-                };
-                let mut images_json = match ext_map.get("images") {
-                    Some(images) => {
-                        let mut urls = Vec::new();
-                        images.iter().for_each(|image| {
-                            if let Some(url) = image.value() {
-                                urls.push(url.to_string());
-                            }
-                        });
-                        serde_json::to_string(&urls).ok()
-                    }
-                    None => None,
-                };
-
-                if let (true, Some(desc)) = (images_json.is_none(), item.description()) {
-                    if let Ok(images) = try_get_all_image_from_html_content(desc.to_string()) {
-                        let images = images
-                            .iter()
-                            .map(|i| rss::Image {
-                                url: i.to_string(),
-                                ..Default::default()
-                            })
-                            .collect::<Vec<_>>();
-                        images_json = serde_json::to_string(&images).ok();
-                    }
-                }
-                // 解析纯文本
-                let mut pure_desc: Option<String> = None;
-
-                if let Some(desc) = item.description() {
-                    if let Ok(desc) = try_get_all_text_from_html_content(desc.to_string()) {
-                        pure_desc = Some(desc);
-                    }
-                }
-                let mut link_req = CreateOrUpdateRssLinkRequestBuilder::default();
-
-                link_req.title(match item.title() {
-                    Some(t) => t.to_string(),
-                    None => "".to_string(),
-                });
-                link_req.subscrption_id(0);
-                link_req.link(item_link.to_string());
-                if let Some(value) = item.description.clone() {
-                    link_req.description(value);
-                }
-
-                if let Some(value) = pure_desc {
-                    link_req.desc_pure_txt(value);
-                }
-
-                if let Some(value) = images_json {
-                    let images: Vec<Image> =
-                        serde_json::from_str::<Vec<Image>>(&value).unwrap_or_default();
-                    link_req.images(images.iter().map(|i| i.clone()).collect::<Vec<_>>());
-                }
-                if let Some(value) = authors_json {
-                    let authors = serde_json::from_str::<Vec<Author>>(&value).unwrap_or_default();
-                    link_req.authors(authors.iter().map(|a| a.clone()).collect::<Vec<_>>());
-                }
-                if let Some(value) = pub_date {
-                    link_req.published_at(value);
-                }
-                if let Ok(link) = link_req
-                    .build()
-                    .map_err(|e| ErrorInService::Custom(format!("构建链接失败:{}", e)))
-                {
-                    links.push(link);
-                }
-            }
-        });
-        let resp = SubscriptionWithLinksResp {
-            subscription,
-            links,
-        };
-        Ok(resp)
-    }
-
     pub async fn insert_subscription(
         &self,
         req: CreateOrUpdateSubscriptionRequest,
@@ -200,6 +60,7 @@ impl SubscriptionController {
         new_model.description = Set(req.description.clone());
         new_model.link = Set(Some(req.link.clone()));
         new_model.site_link = Set(req.site_link.clone());
+        new_model.category_id = Set(req.category_id);
         new_model.logo = Set(req.logo.clone());
         new_model.pub_date = Set(req.pub_date);
         new_model.language = Set(req.language.clone());
@@ -209,20 +70,21 @@ impl SubscriptionController {
 
         let updated = match prefer_update {
             true => new_model.update(conn).await?,
-            false => {
-                let m = new_model.insert(conn).await?;
-                // 使用更简洁的方式处理 Option 类型
-                let category_id = req.category_id.unwrap_or(0); // 假设 0 是一个合理的默认值，否则应该使用更合适的错误处理
-                let relation_data = feed_subscription_category_ref::ActiveModel {
-                    category_id: Set(category_id),
-                    subscription_id: Set(m.id.clone()),
-                    ..Default::default()
-                };
-                relation_data.insert(conn).await?;
-                m
-            }
+            false => new_model.insert(conn).await?,
         };
+
         let is_update = prefer_update;
+        if !is_update {
+            let build_config = feed_build_config::ActiveModel {
+                subscription_id: Set(updated.id),
+                initial_frequency: Set(3600.0),
+                source_type: Set(feed_build_config::SourceType::Unknown),
+                ..Default::default()
+            };
+            if let Err(e) = build_config.insert(conn).await {
+                tracing::error!("insert build config error: {:?}", e);
+            }
+        }
 
         Ok((is_update, updated.id))
     }
@@ -250,11 +112,7 @@ impl SubscriptionController {
             .left_join(feed_build_config::Entity)
             .join(
                 JoinType::LeftJoin,
-                lib_entity::feed_subscription::Relation::Links.def(),
-            )
-            .join(
-                JoinType::LeftJoin,
-                lib_entity::feed_subscription_link_ref::Relation::Link
+                lib_entity::feed_subscription::Relation::Links
                     .def()
                     .on_condition(move |_left, right| {
                         Expr::col(lib_entity::feed_link::Column::PublishedAt)
@@ -345,7 +203,9 @@ impl SubscriptionController {
 #[cfg(test)]
 mod tests {
 
-    use crate::rss::category_service::CategoryController;
+    use crate::feed::{
+        category_service::CategoryController, subscription_parse::SubscriptionParseController,
+    };
 
     use super::*;
     use migration::{Migrator, MigratorTrait};
@@ -353,8 +213,7 @@ mod tests {
     #[tokio::test]
     async fn test_parser_rss_from_url() {
         let url: &str = "https://www.elconfidencialdigital.com/rss?seccion=el_confidencial_digital";
-        let resp = SubscriptionController
-            .parser_rss_from_url(url)
+        let resp = SubscriptionParseController::parser_rss_from_url(url)
             .await
             .unwrap();
         // assert_eq!(resp.subscription.title, "数字尾巴");
@@ -368,7 +227,7 @@ mod tests {
         let current_time: NaiveDateTime = chrono::Utc::now().naive_utc();
         let category_controller = CategoryController;
         let mut category_req_builder =
-            crate::rss::schema::CreateOrUpdateCategoryRequestBuilder::default();
+            crate::feed::schema::CreateOrUpdateCategoryRequestBuilder::default();
         category_req_builder.title("test_category".to_string());
         let category_req = category_req_builder.build().unwrap();
         let category = category_controller
@@ -387,8 +246,14 @@ mod tests {
             .language("test".to_string())
             .build()
             .unwrap();
-        let (is_update, id) = controller.insert_subscription(req, &conn).await.unwrap();
+        let (is_update, id) = controller
+            .insert_subscription(req.clone(), &conn)
+            .await
+            .unwrap();
         assert_eq!(is_update, false);
+
+        let (is_update, id) = controller.insert_subscription(req, &conn).await.unwrap();
+        assert_eq!(is_update, true);
 
         let req = CreateOrUpdateSubscriptionRequestBuilder::default()
             .title("updated".to_string())
@@ -418,11 +283,7 @@ mod tests {
         let mut select = lib_entity::feed_subscription::Entity::find()
             .join(
                 JoinType::LeftJoin,
-                lib_entity::feed_subscription::Relation::Links.def(),
-            )
-            .join(
-                JoinType::LeftJoin,
-                lib_entity::feed_subscription_link_ref::Relation::Link
+                lib_entity::feed_subscription::Relation::Links
                     .def()
                     .on_condition(move |_left, right| {
                         Expr::col(lib_entity::feed_link::Column::PublishedAt)
@@ -470,7 +331,7 @@ mod tests {
 
         println!("sql: {}", select.build(conn.get_database_backend()));
         let models = select
-            .into_model::<crate::rss::schema::SubscriptionModel>()
+            .into_model::<crate::feed::schema::SubscriptionModel>()
             .all(&conn)
             .await
             .unwrap();

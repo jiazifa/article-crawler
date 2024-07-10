@@ -25,3 +25,4 @@ config.prod.toml
 .env
 data/
 .idea/
+.DS_Store

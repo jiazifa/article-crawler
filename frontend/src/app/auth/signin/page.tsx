@@ -55,10 +55,12 @@ export default function LoginForm() {
     })
 
     const onSubmitAction = async (value: z.infer<typeof formSchema>) => {
+        const callback = callbackUrl ?? MAIN_APP.RssNewest;
+
         signIn('credentials', {
             email: value.email,
             password: value.password,
-            callbackUrl: callbackUrl ?? MAIN_APP.RssNewest
+            callbackUrl: callback
         });
         // try {
         //     const respOrigin = await serverAPI.post("account/login", { json: value });

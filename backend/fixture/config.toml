@@ -40,5 +40,5 @@ api_base = "http://localhost:11434/v1"
 
 # 配置 Docker 内的各个服务的host
 [services]
-js_server_host = "http://localhost:3000"
-web_api_host = "http://localhost:8888"
+js_server_host = "http://localhost:5012"
+web_api_host = "http://localhost:9000"

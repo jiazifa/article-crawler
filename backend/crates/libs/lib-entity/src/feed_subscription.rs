@@ -28,6 +28,8 @@ pub struct Model {
     pub link: Option<String>,
     // 对应rss链接提供方的网站
     pub site_link: Option<String>,
+    // category_id
+    pub category_id: Option<i64>,
     // logo URL
     pub logo: Option<String>,
     // 语言
@@ -58,6 +60,7 @@ pub enum Column {
     Description,
     Link,
     SiteLink,
+    CategoryId,
     Logo,
     Language,
     Rating,
@@ -89,6 +92,7 @@ impl ColumnTrait for Column {
             Self::Description => ColumnType::Text.def().nullable(),
             Self::Link => ColumnType::Text.def().nullable(),
             Self::SiteLink => ColumnType::String(Some(255u32)).def().nullable(),
+            Self::CategoryId => ColumnType::Integer.def().nullable(),
             Self::Logo => ColumnType::Text.def().nullable(),
             Self::Language => ColumnType::String(Some(64u32)).def().nullable(),
             Self::Rating => ColumnType::Integer.def().nullable(),
@@ -116,11 +120,20 @@ pub enum Relation {
 impl RelationTrait for Relation {
     fn def(&self) -> RelationDef {
         match self {
-            Self::Category => Entity::has_many(super::feed_category::Entity).into(),
+            Self::Category => Entity::belongs_to(super::feed_category::Entity)
+                .from(Column::CategoryId)
+                .to(super::feed_category::Column::Id)
+                .into(),
             Self::UpdateRecords => Entity::has_many(super::feed_build_record::Entity).into(),
             Self::UpdateConfig => Entity::has_one(super::feed_build_config::Entity).into(),
-            Self::Links => Entity::has_many(super::feed_subscription_link_ref::Entity).into(),
+            Self::Links => Entity::has_many(super::feed_link::Entity).into(),
         }
+    }
+}
+
+impl Related<super::feed_category::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::Category.def()
     }
 }
 
@@ -136,31 +149,9 @@ impl Related<super::feed_build_config::Entity> for Entity {
     }
 }
 
-impl Related<super::feed_category::Entity> for Entity {
-    fn to() -> RelationDef {
-        super::feed_subscription_category_ref::Relation::Category.def()
-    }
-
-    fn via() -> Option<RelationDef> {
-        Some(
-            super::feed_subscription_category_ref::Relation::Subscription
-                .def()
-                .rev(),
-        )
-    }
-}
-
 impl Related<super::feed_link::Entity> for Entity {
     fn to() -> RelationDef {
-        super::feed_subscription_link_ref::Relation::Link.def()
-    }
-
-    fn via() -> Option<RelationDef> {
-        Some(
-            super::feed_subscription_link_ref::Relation::Subscription
-                .def()
-                .rev(),
-        )
+        Relation::Links.def()
     }
 }
 

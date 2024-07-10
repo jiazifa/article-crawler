@@ -1,6 +1,6 @@
 use crate::common_schema::PageRequest;
 use crate::error::ErrorInService;
-use crate::rss::SubscriptionBuildSourceType;
+use crate::feed::SubscriptionBuildSourceType;
 use chrono::naive::serde::ts_milliseconds_option;
 use chrono::NaiveDateTime;
 use lib_crawler::{try_get_all_image_from_html_content, try_get_all_text_from_html_content};
@@ -147,6 +147,8 @@ pub struct LinkModel {
     pub title: String,
     // 链接
     pub link: String,
+    // subscription_id
+    pub subscription_id: i64,
     // 内容(可能为空，包含 html)
     #[builder(default)]
     pub content: Option<String>,
@@ -187,6 +189,7 @@ impl From<lib_entity::feed_link::Model> for LinkModel {
         Self {
             id: value.id,
             title: value.title,
+            subscription_id: value.subscription_id,
             link: value.link,
             content: Some(description),
             description: Some(text_desc),
@@ -218,6 +221,7 @@ impl FromQueryResult for LinkModel {
         let model = model_builder
             .id(res.try_get(pre, "id")?)
             .title(res.try_get(pre, "title")?)
+            .subscription_id(res.try_get(pre, "subscription_id")?)
             .link(res.try_get(pre, "link")?)
             .content(Some(description))
             .description(Some(text_desc))
@@ -489,6 +493,9 @@ impl From<lib_entity::feed_subscription::Model> for CreateOrUpdateSubscriptionRe
         if let Some(value) = value.site_link {
             req.site_link(value);
         }
+        if let Some(value) = value.category_id {
+            req.category_id(value);
+        }
         if let Some(value) = value.logo {
             req.logo(value);
         }
@@ -642,7 +649,7 @@ pub struct CreateOrUpdateRssLinkRequest {
     // 标题
     pub title: String,
     // 订阅源
-    pub subscrption_id: Option<i64>,
+    pub subscrption_id: i64,
     // 链接
     pub link: String,
     // 描述

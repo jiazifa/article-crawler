@@ -2,18 +2,22 @@ use crawler::remove_links::remove_expired_links;
 use crawler::utils::{load_categories_from_dir, load_subscriptions_from_dir};
 
 use lib_core::error::ErrorInService;
-use lib_core::rss::schema::{
+use lib_core::feed::schema::{
     InsertSubscriptionRecordRequestBuilder, QueryPreferUpdateSubscriptionRequest,
     SubscriptionWithLinksResp,
 };
-use lib_core::rss::{
+use lib_core::feed::{
     CreateOrUpdateSubscriptionRequest, LinkController, SubscriptionBuildRecordStatus,
+    SubscriptionParseController,
 };
-use lib_core::rss::{SubscriptionController, SubscritionConfigController};
+use lib_core::feed::{SubscriptionController, SubscritionConfigController};
 use lib_utils::Setting;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use tokio::time::{self, timeout};
+use tracing_subscriber::{
+    filter::EnvFilter, layer::SubscriberExt, util::SubscriberInitExt, Registry,
+};
 
 use clap::Parser;
 use rand::Rng;
@@ -44,7 +48,7 @@ impl Runner {
     // 更新链接的元信息
     pub async fn update_links_meta_job(
         &self,
-        links: Vec<lib_core::rss::schema::LinkModel>,
+        links: Vec<lib_core::feed::schema::LinkModel>,
         setting: &Setting,
     ) -> anyhow::Result<()> {
         let js_server_host = match &setting.services.js_server_host {
@@ -67,10 +71,10 @@ impl Runner {
         let links = links
             .iter()
             .map(|link| link.to_owned())
-            .collect::<Vec<lib_core::rss::schema::LinkModel>>();
+            .collect::<Vec<lib_core::feed::schema::LinkModel>>();
 
         let (link_update_tx, mut link_update_rx) = tokio::sync::mpsc::channel::<
-            Result<lib_core::rss::CreateOrUpdateRssLinkRequest, ErrorInService>,
+            Result<lib_core::feed::CreateOrUpdateRssLinkRequest, ErrorInService>,
         >(2);
 
         let conn_clone = Arc::clone(&conn_origin_arc);
@@ -102,47 +106,46 @@ impl Runner {
             let semaphore = Arc::clone(&semaphore);
             let task = tokio::spawn(async move {
                 let _permit = semaphore.acquire().await;
-                let result = match crawler::utils::fetch_link_meta(link.link.clone(), request_url)
-                    .await
-                {
-                    Ok(meta) => {
-                        let mut update_link_req_builder =
-                            lib_core::rss::schema::CreateOrUpdateRssLinkRequestBuilder::default();
-                        update_link_req_builder.link(link.link);
-                        update_link_req_builder.title(link.title);
-                        if link.content.is_none() {
-                            if let Some(content) =
-                                meta["content"].as_str().map(|content| content.to_string())
-                            {
-                                update_link_req_builder.description(content.clone());
-
-                                if let Ok(desc_pure_txt) =
-                                    lib_crawler::try_get_all_text_from_html_content(content)
+                let result =
+                    match crawler::utils::fetch_link_meta(link.link.clone(), request_url).await {
+                        Ok(meta) => {
+                            let mut update_link_req_builder =
+                            lib_core::feed::schema::CreateOrUpdateRssLinkRequestBuilder::default();
+                            update_link_req_builder.link(link.link);
+                            update_link_req_builder.title(link.title);
+                            if link.content.is_none() {
+                                if let Some(content) =
+                                    meta["content"].as_str().map(|content| content.to_string())
                                 {
-                                    update_link_req_builder.desc_pure_txt(desc_pure_txt);
+                                    update_link_req_builder.description(content.clone());
+
+                                    if let Ok(desc_pure_txt) =
+                                        lib_crawler::try_get_all_text_from_html_content(content)
+                                    {
+                                        update_link_req_builder.desc_pure_txt(desc_pure_txt);
+                                    }
                                 }
                             }
-                        }
-                        if let Some(lead_image_url) = meta["lead_image_url"]
-                            .as_str()
-                            .map(|lead_image_url| lead_image_url.to_string())
-                        {
-                            let image = lib_core::rss::schema::Image {
-                                url: lead_image_url.clone(),
-                                title: None,
-                                link: None,
-                                width: None,
-                                height: None,
-                                description: None,
-                            };
-                            update_link_req_builder.images(vec![image]);
-                        }
-                        // 如果没有 Description， 那么尝试使用 content
+                            if let Some(lead_image_url) = meta["lead_image_url"]
+                                .as_str()
+                                .map(|lead_image_url| lead_image_url.to_string())
+                            {
+                                let image = lib_core::feed::schema::Image {
+                                    url: lead_image_url.clone(),
+                                    title: None,
+                                    link: None,
+                                    width: None,
+                                    height: None,
+                                    description: None,
+                                };
+                                update_link_req_builder.images(vec![image]);
+                            }
+                            // 如果没有 Description， 那么尝试使用 content
 
-                        update_link_req_builder.build()
-                    }
-                    Err(e) => Err(e),
-                };
+                            update_link_req_builder.build()
+                        }
+                        Err(e) => Err(e),
+                    };
                 _ = tx.send(result).await;
             });
             tasks.push(task);
@@ -156,10 +159,19 @@ impl Runner {
         Ok(())
     }
 
+    /// Asynchronously updates the subscriptions based on the provided `Setting`.
+    ///
+    /// # Arguments
+    ///
+    /// * `setting` - The `Setting` configuration.
+    ///
+    /// # Returns
+    ///
+    /// A vector of `LinkModel` representing the updated links.
     pub async fn update_subscriptions_job(
         &self,
         setting: &Setting,
-    ) -> anyhow::Result<Vec<lib_core::rss::schema::LinkModel>> {
+    ) -> anyhow::Result<Vec<lib_core::feed::schema::LinkModel>> {
         let conn_origin = lib_core::get_db_conn(setting.database.uri.clone()).await;
 
         // 查询需要更新的订阅源
@@ -240,6 +252,8 @@ impl Runner {
                 // 首先更新订阅源部分，更新订阅源的最后更新时间
                 let mut update_subscription_req = rss_subscription;
                 update_subscription_req.last_build_date = Some(chrono::Utc::now().naive_utc());
+                // 如果没有 category_id，那么使用原来的 category_id
+
                 update_subscription_req.category_id = subscription.category_id;
                 update_subscription_req.language = language;
                 match SubscriptionController
@@ -264,7 +278,8 @@ impl Runner {
 
                 for link in links {
                     let mut update_link_req = link;
-                    update_link_req.subscrption_id = subscription.id;
+
+                    update_link_req.subscrption_id = subscription.id.expect("订阅源ID不能为空");
                     match LinkController
                         .insert_link(update_link_req, &conn_temp)
                         .await
@@ -310,9 +325,10 @@ impl Runner {
             let semaphore = Arc::clone(&semaphore);
             let task = tokio::spawn(async move {
                 let _permit = semaphore.acquire().await;
-                let result = SubscriptionController
-                    .parser_rss_from_url(subscription.clone().link.as_str())
-                    .await;
+                let result = SubscriptionParseController::parser_rss_from_url(
+                    subscription.clone().link.as_str(),
+                )
+                .await;
                 _ = tx.send((subscription.clone(), result)).await;
             });
             tasks.push(task);
@@ -361,6 +377,22 @@ async fn main() -> anyhow::Result<()> {
         }
     };
     Setting::set_global(setting.clone());
+
+    let env_filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info"));
+
+    // 输出到控制台中
+    let formatting_layer = tracing_subscriber::fmt::layer()
+        .with_level(true)
+        .pretty()
+        .with_writer(std::io::stderr);
+
+    // 注册
+    Registry::default()
+        .with(env_filter)
+        // ErrorLayer 可以让 color-eyre 获取到 span 的信息
+        .with(formatting_layer)
+        .init();
+
     let conn = lib_core::get_db_conn(setting.database.uri.clone()).await;
 
     let workspace = std::path::Path::new("data");
@@ -373,6 +405,7 @@ async fn main() -> anyhow::Result<()> {
     let categories = match load_categories_from_dir(category_dir.to_string(), &conn).await {
         Ok(categories) => categories,
         Err(e) => {
+            println!("加载分类失败:{}", e);
             tracing::error!("加载分类失败:{}", e);
             vec![]
         }
@@ -385,7 +418,6 @@ async fn main() -> anyhow::Result<()> {
             tracing::info!("加载订阅源成功");
         }
         Err(e) => {
-            println!("加载订阅源失败:{}", e);
             tracing::error!("加载订阅源失败:{}", e);
         }
     }
@@ -426,7 +458,7 @@ async fn main() -> anyhow::Result<()> {
                     .map_or(true, |images| images.is_empty())
             })
             .cloned()
-            .collect::<Vec<lib_core::rss::schema::LinkModel>>();
+            .collect::<Vec<lib_core::feed::schema::LinkModel>>();
         // 根据 `published_at` 排序
         filted_links.sort_by(|a, b| {
             // compare published_at
@@ -440,7 +472,7 @@ async fn main() -> anyhow::Result<()> {
             a.partial_cmp(&b).unwrap_or(std::cmp::Ordering::Equal)
         });
         // 只根据 1s 一个链接的速度计算，空余时间可以接受的更新数量
-        let trimmed_links: Vec<lib_core::rss::schema::LinkModel> = filted_links;
+        let trimmed_links: Vec<lib_core::feed::schema::LinkModel> = filted_links;
         println!(
             "准备更新链接信息任务, 本次更新链接数量:{}",
             trimmed_links.len()
@@ -483,7 +515,7 @@ mod tests {
         // let url = "https://feeds.bbci.co.uk/sport/football/rss.xml";
         let url = "https://cnnespanol.cnn.com/feed/";
 
-        let channel = SubscriptionController.parser_rss_from_url(url).await;
+        let channel = SubscriptionParseController::parser_rss_from_url(url).await;
         let channel = match channel {
             Ok(channel) => channel,
             Err(e) => {

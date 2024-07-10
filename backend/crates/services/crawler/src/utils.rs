@@ -2,7 +2,7 @@ use crate::schema::Category;
 use lib_core::{
     common_schema::PageRequest,
     error::ErrorInService,
-    rss::{
+    feed::{
         schema::{
             CreateOrUpdateCategoryRequestBuilder, CreateOrUpdateSubscriptionRequestBuilder,
             QueryCategoryRequestBuilder,
@@ -342,13 +342,13 @@ pub async fn fetch_link_meta(
         .send()
         .await
         .map_err(|e| {
-            tracing::error!("summary_rss_link error:{}", e);
+            tracing::error!("fetch_link_meta error:{}", e);
             ErrorInService::Custom("请求解析链接失败".to_string())
         })?
         .json::<serde_json::Value>()
         .await
         .map_err(|e| {
-            tracing::error!("summary_rss_link error:{}", e);
+            tracing::error!("fetch_link_meta error:{}", e);
             ErrorInService::Custom("解析链接失败".to_string())
         })?;
 

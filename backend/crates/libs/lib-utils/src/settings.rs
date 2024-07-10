@@ -170,7 +170,7 @@ fn load_configure(file: Option<String>) -> Config {
     builder = builder.set_default("jwt.exp", 3600 * 24 * 30).unwrap();
 
     builder = builder
-        .set_default("database.uri", "sqlite://data.db?mode=rwc")
+        .set_default("database.uri", "sqlite://./data.db?mode=rwc")
         .unwrap();
     if let Some(cfg_file) = file.as_ref() {
         if std::path::Path::new(&cfg_file).exists() {

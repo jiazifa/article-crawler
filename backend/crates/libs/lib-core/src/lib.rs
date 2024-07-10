@@ -3,7 +3,7 @@ extern crate derive_builder;
 pub mod auth;
 pub mod common_schema;
 pub mod error;
-pub mod rss;
+pub mod feed;
 
 use std::time::Duration;
 
@@ -20,7 +20,7 @@ pub async fn get_db_conn(uri: String) -> DBConnection {
         .min_connections(5)
         .connect_timeout(Duration::from_secs(30))
         .idle_timeout(Duration::from_secs(8))
-        .sqlx_logging(true);
+        .sqlx_logging(false);
     let db = Database::connect(opt)
         .await
         .expect(format!("Failed to connect to database: {}", uri).as_str());

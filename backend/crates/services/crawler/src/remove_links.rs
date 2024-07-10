@@ -1,7 +1,7 @@
 use std::{fmt::Debug, path::Path};
 
 use chrono::NaiveDateTime;
-use lib_core::{rss::LinkController, DBConnection};
+use lib_core::{feed::LinkController, DBConnection};
 
 use serde::{Deserialize, Serialize};
 

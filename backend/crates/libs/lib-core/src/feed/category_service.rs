@@ -90,7 +90,7 @@ mod tests {
     use migration::{Migrator, MigratorTrait};
     use sqlx::migrate::Migrate;
 
-    use crate::rss::schema::QueryCategoryRequestBuilder;
+    use crate::feed::schema::QueryCategoryRequestBuilder;
 
     use super::*;
 

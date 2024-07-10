@@ -8,7 +8,7 @@ pub struct Entity;
 
 impl EntityName for Entity {
     fn table_name(&self) -> &str {
-        "rss_account_token"
+        "account_token"
     }
     fn schema_name(&self) -> Option<&str> {
         // Some("dasv")

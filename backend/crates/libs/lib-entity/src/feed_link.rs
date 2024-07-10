@@ -24,6 +24,8 @@ pub struct Model {
     pub title: String,
     // 链接
     pub link: String,
+    // subscription_id
+    pub subscription_id: i64,
     // 描述(可能包含 html)
     pub description: Option<String>,
     // 纯文本描述
@@ -52,6 +54,7 @@ pub enum Column {
     Id,
     Title,
     Link,
+    SubscriptionId,
     Description,
     DescPureTxt,
     Images,
@@ -80,6 +83,7 @@ impl ColumnTrait for Column {
         match self {
             Self::Id => ColumnType::Integer.def(),
             Self::Title => ColumnType::String(Some(255u32)).def().nullable(),
+            Self::SubscriptionId => ColumnType::Integer.def(),
             Self::Description => ColumnType::Text.def().nullable(),
             Self::DescPureTxt => ColumnType::Text.def().nullable(),
             Self::Images => ColumnType::Array(RcOrArc::new(ColumnType::Text))
@@ -111,7 +115,10 @@ impl RelationTrait for Relation {
     fn def(&self) -> RelationDef {
         match self {
             Self::Summary => Entity::has_one(super::feed_link_summary::Entity).into(),
-            Self::Subscriptions => Entity::has_many(super::feed_subscription::Entity).into(),
+            Self::Subscriptions => Entity::belongs_to(super::feed_subscription::Entity)
+                .from(Column::SubscriptionId)
+                .to(super::feed_subscription::Column::Id)
+                .into(),
         }
     }
 }
@@ -124,15 +131,7 @@ impl Related<super::feed_link_summary::Entity> for Entity {
 
 impl Related<super::feed_subscription::Entity> for Entity {
     fn to() -> RelationDef {
-        super::feed_subscription_link_ref::Relation::Subscription.def()
-    }
-
-    fn via() -> Option<RelationDef> {
-        Some(
-            super::feed_subscription_link_ref::Relation::Link
-                .def()
-                .rev(),
-        )
+        Relation::Subscriptions.def()
     }
 }
 

@@ -7,3 +7,4 @@ logs/
 export/
 
 data/
+.DS_Store

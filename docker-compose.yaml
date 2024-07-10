@@ -6,7 +6,7 @@ services:
     image: article-js-server-image
     container_name: article-s-server-container
     build:
-      context: ../js-server
+      context: ./js-server
       dockerfile: Dockerfile
     networks:
       - my-network
@@ -19,7 +19,7 @@ services:
     image: article-frontend-image
     container_name: name-frontend-container
     build:
-      context: ../frontend/
+      context: ./frontend/
       dockerfile: Dockerfile
     networks:
       - my-network
@@ -34,13 +34,13 @@ services:
     image: article-rust-image
     container_name: article-crawler-container
     build:
-      context: ../backend/
+      context: ./backend/
       dockerfile: Dockerfile
     networks:
       - my-network
     volumes:
-      - ../logs:/app/logs
-      - ../data:/app/data
+      - ./logs:/app/logs
+      - ./data:/app/data
     restart: unless-stopped
     command: >
       sh -c "./bin/crawler"
@@ -53,15 +53,15 @@ services:
     image: article-web-api-image
     container_name: article-web-api-container
     build:
-      context: ../backend/
+      context: ./backend/
       dockerfile: Dockerfile
     ports:
       - "8001:5000"
     networks:
       - my-network
     volumes:
-      - ../logs:/app/logs
-      - ../data:/app/data
+      - ./logs:/app/logs
+      - ./data:/app/data
     restart: unless-stopped
     command: >
       sh -c "./bin/web-server"

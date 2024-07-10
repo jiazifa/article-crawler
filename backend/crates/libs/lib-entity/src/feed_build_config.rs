@@ -37,7 +37,7 @@ pub struct Model {
     // 自适应 频率
     pub fitted_frequency: Option<f32>,
     // 是否启用自适应
-    pub fitted_adaptive: bool,
+    pub fitted_adaptive: Option<bool>,
     // 订阅源类型(决定了更新的方式)
     pub source_type: SourceType,
     // 最近一次更新时间
@@ -80,8 +80,8 @@ impl ColumnTrait for Column {
             Self::SubscriptionId => ColumnType::Integer.def(),
             Self::InitialFrequency => ColumnType::Float.def(),
             Self::FittedFrequency => ColumnType::Float.def().nullable(),
-            Self::FittedAdaptive => ColumnType::Boolean.def(),
-            Self::SourceType => ColumnType::SmallInteger.def(),
+            Self::FittedAdaptive => ColumnType::Boolean.def().nullable(),
+            Self::SourceType => ColumnType::SmallInteger.def().nullable(),
             Self::LastBuildAt => ColumnType::DateTime.def().nullable(),
         }
     }

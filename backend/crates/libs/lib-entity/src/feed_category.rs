@@ -88,18 +88,4 @@ impl RelationTrait for Relation {
     }
 }
 
-impl Related<super::feed_subscription::Entity> for Entity {
-    fn to() -> RelationDef {
-        super::feed_subscription_category_ref::Relation::Subscription.def()
-    }
-
-    fn via() -> Option<RelationDef> {
-        Some(
-            super::feed_subscription_category_ref::Relation::Category
-                .def()
-                .rev(),
-        )
-    }
-}
-
 impl ActiveModelBehavior for ActiveModel {}

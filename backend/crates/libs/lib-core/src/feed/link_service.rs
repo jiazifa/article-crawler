@@ -37,6 +37,7 @@ impl LinkController {
         let mut new_model = match link {
             Some(m) => m.into_active_model(),
             None => feed_link::ActiveModel {
+                subscription_id: Set(req.subscrption_id),
                 ..Default::default()
             },
         };
@@ -45,6 +46,7 @@ impl LinkController {
         let image_value = serde_json::to_value(req.images.clone()).unwrap();
         let author_value = serde_json::to_value(req.authors.clone()).unwrap();
         new_model.link = Set(req.link.clone());
+
         new_model.description = Set(req.description.clone());
         new_model.desc_pure_txt = Set(req.desc_pure_txt.clone());
         // images is serder_json value. vec of Image
@@ -168,7 +170,7 @@ mod tests {
 
     use migration::{Migrator, MigratorTrait};
 
-    use crate::rss::schema::{CreateOrUpdateRssLinkRequestBuilder, QueryRssLinkRequestBuilder};
+    use crate::feed::schema::{CreateOrUpdateRssLinkRequestBuilder, QueryRssLinkRequestBuilder};
 
     use super::*;
 

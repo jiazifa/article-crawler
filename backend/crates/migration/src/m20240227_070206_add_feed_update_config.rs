@@ -35,7 +35,7 @@ impl MigrationTrait for Migration {
                     .col(
                         ColumnDef::new(Alias::new("fitted_adaptive"))
                             .boolean()
-                            .not_null(),
+                            .null(),
                     )
                     // Source Type
                     .col(

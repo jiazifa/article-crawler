@@ -100,7 +100,7 @@ fastify.post("/parse/md", {schema}, async (request, _reply) => {
 });
 
 
-fastify.listen({port: 3000, host: '0.0.0.0'}, (err, address) => {
+fastify.listen({port: 5012, host: '0.0.0.0'}, (err, address) => {
     if (err) {
         fastify.log.error(`got error: ${err}`);
         process.exit(1);
