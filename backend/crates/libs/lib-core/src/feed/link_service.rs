@@ -83,6 +83,7 @@ impl LinkController {
             .limit(page_size)
             .offset(offset)
             .select();
+        println!("sql: {:?}", select.build(conn.get_database_backend()));
         let all_count = select.clone().count(conn).await.unwrap_or(0);
 
         let page_count = get_page_count(all_count, page_size);
@@ -123,7 +124,7 @@ impl QueryRssLinkRequest {
     }
 
     fn build_query(&self) -> Select<feed_link::Entity> {
-        let mut select = feed_link::Entity::find().inner_join(feed_subscription::Entity);
+        let mut select = feed_link::Entity::find().left_join(feed_subscription::Entity);
         select = select
             .select_only()
             .columns(vec![
@@ -133,9 +134,8 @@ impl QueryRssLinkRequest {
                 feed_link::Column::Description,
                 feed_link::Column::DescPureTxt,
                 feed_link::Column::PublishedAt,
+                feed_link::Column::SubscriptionId,
             ])
-            // subscrption_id
-            .column_as(feed_subscription::Column::Id, "subscrption_id")
             .column_as(feed_link::Column::Images, "images")
             // authors 是 authors_json 的解析结果
             .column_as(feed_link::Column::Authors, "authors");
@@ -174,6 +174,29 @@ mod tests {
 
     use super::*;
 
+    fn test_query_link_request_deserialize() {
+        let req_raw = r#"{
+            "ids": [1, 2, 3],
+            "title": "test",
+            "subscrption_ids": [1, 2, 3],
+            "published_at_lower": 1619827200000,
+            "published_at_upper": 1619827200000
+        }"#;
+        let req = serde_json::from_str::<QueryRssLinkRequest>(req_raw).unwrap();
+        assert_eq!(req.ids, Some(vec![1, 2, 3]));
+
+        let req_raw = r#"{
+            "published_at_lower": 1619827200000,
+            "published_at_upper": 1619827200000,
+            page: {
+                page: 1,
+                page_size: 10
+            }
+        }"#;
+        let req = serde_json::from_str::<QueryRssLinkRequest>(req_raw).unwrap();
+        assert_eq!(req.clone().page.unwrap().page, 1);
+        assert_eq!(req.page.unwrap().page_size, 10);
+    }
     #[tokio::test]
     async fn test_create_link() {
         let conn = crate::test_runner::setup_database().await;
@@ -206,8 +229,16 @@ mod tests {
                 .published_at(current_date)
                 .build()
                 .unwrap();
+
             let res = controller.insert_link(req, &conn).await.unwrap();
             assert_eq!(res.1.title, "test_updated");
+
+            let query_req = QueryRssLinkRequestBuilder::default()
+                .ids(vec![id])
+                .build()
+                .unwrap();
+            let res = controller.query_links(query_req, &conn).await.unwrap();
+            assert_eq!(res.data.len(), 1);
         }
     }
 }

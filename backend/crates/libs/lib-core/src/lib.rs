@@ -24,6 +24,7 @@ pub async fn get_db_conn(uri: String) -> DBConnection {
     let db = Database::connect(opt)
         .await
         .expect(format!("Failed to connect to database: {}", uri).as_str());
+    println!("Database connected, {}", uri);
     tracing::info!("Database connected");
     db
 }

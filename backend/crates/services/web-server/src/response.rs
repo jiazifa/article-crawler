@@ -65,7 +65,7 @@ pub fn code_for_error(e: &APIError) -> i32 {
     match e {
         APIError::ErrorParams(_) => 10001,
         APIError::Toast(_) => 10002,
-        APIError::Internal => 99999,
+        APIError::Internal(_) => 99999,
     }
 }
 

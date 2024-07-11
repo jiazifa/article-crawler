@@ -4,6 +4,7 @@ use migration::{Migrator, MigratorTrait};
 use std::error::Error;
 use std::{net::SocketAddr, str::FromStr};
 use tokio::runtime::Builder;
+use tracing::level_filters::LevelFilter;
 use tracing_appender::{non_blocking, rolling};
 use tracing_subscriber::{
     filter::EnvFilter, fmt, layer::SubscriberExt, util::SubscriberInitExt, Registry,
@@ -42,8 +43,11 @@ impl Server {
 
             let setting = Setting::global();
 
-            let env_filter =
-                EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info"));
+            let env_filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| {
+                EnvFilter::builder()
+                    .with_default_directive(LevelFilter::TRACE.into())
+                    .parse_lossy("")
+            });
 
             // 输出到控制台中
             let formatting_layer = fmt::layer()
@@ -60,7 +64,8 @@ impl Server {
             let (non_blocking_appender, _guard) = non_blocking(file_appender);
             let file_layer = fmt::layer()
                 .with_ansi(false)
-                .with_writer(non_blocking_appender);
+                .with_writer(non_blocking_appender)
+                .with_span_events(fmt::format::FmtSpan::CLOSE);
 
             // 注册
             Registry::default()
@@ -69,6 +74,7 @@ impl Server {
                 .with(formatting_layer)
                 .with(file_layer)
                 .init();
+
             let router = web_server::build_router(&setting).await;
 
             let addr = match Self::bind_address(&setting) {

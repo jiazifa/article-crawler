@@ -23,8 +23,9 @@ pub(crate) async fn register_account(
     let conn = &app.pool;
     let account_controller = AccountController;
     if let Err(err) = account_controller.register_account(req, conn).await {
-        tracing::error!("register account error: {:?}", err);
-        return Err(APIError::Internal);
+        let error_message = format!("register account error: {}", err);
+        tracing::error!("{}", error_message);
+        return Err(APIError::Internal(error_message));
     }
     Ok(APIResponse::<bool>::new()
         .with_code(200_i32)
@@ -55,7 +56,7 @@ pub async fn login_account(
     let jwt = ecode_to_jwt(&claims, app.setting.jwt.secret.as_bytes());
     let jwt_resp = match jwt {
         Some(j) => j,
-        None => return Err(APIError::Internal),
+        None => return Err(APIError::Internal("jwt error".to_string())),
     };
     let new_resp = LoginAccountResponse {
         token: jwt_resp,

@@ -38,7 +38,7 @@ export interface QueryFeedLinkRequest {
 const category_fetcher = async (
   options: QueryCategoryRequest
 ): Promise<PageResponse<Category>> => {
-  const resp = await serverAPI.post("rss/category/query", {
+  const resp = await serverAPI.post("feed/category/query", {
     json: options,
   });
   const respData: APIResponse<PageResponse<Category>> =
@@ -54,7 +54,7 @@ const category_fetcher = async (
 const subscription_fetcher = async (
   options: QuerySubscriptionRequest
 ): Promise<PageResponse<Subscription>> => {
-  const resp = await serverAPI.post("rss/subscrition/query", {
+  const resp = await serverAPI.post("feed/subscrition/query", {
     json: options,
   });
   const respData: APIResponse<PageResponse<Subscription>> =
@@ -70,7 +70,7 @@ const subscription_fetcher = async (
 const feedlink_fetcher = async (
   options: QueryFeedLinkRequest
 ): Promise<PageResponse<Link>> => {
-  const resp = await serverAPI.post("rss/link/query", {
+  const resp = await serverAPI.post("feed/link/query", {
     json: options,
   });
   const respData: APIResponse<PageResponse<Link>> = await parserServerResponse(
@@ -106,7 +106,7 @@ export const useCategoryList = (options: QueryCategoryRequest) => {
 export const useFeedLinkList = (options: QueryFeedLinkRequest) => {
   const params = new URLSearchParams();
   params.append("options", JSON.stringify(options));
-  return useSWR<PageResponse<Link>>(`/rsslink?${params.toString()}`, () =>
+  return useSWR<PageResponse<Link>>(`/feedlink?${params.toString()}`, () =>
     feedlink_fetcher(options)
   );
 };

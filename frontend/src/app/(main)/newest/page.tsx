@@ -24,7 +24,8 @@ export default function Home() {
     };
 
     const linkOption: QueryFeedLinkRequest = {
-        published_at_lower: todayStart.getTime() / 1000,
+        // published_at_lower: todayStart.getTime() / 1000 * 1000,
+        // published_at_upper: today.getTime() / 1000 * 1000,
         page: {
             page_size: 10,
             page: 1
@@ -32,10 +33,14 @@ export default function Home() {
     }
 
     const { data: subscriptionResp, error: subsError, mutate: subsMutate } = useSubscriptionList(option);
+    // console.log(`linkOption: ${JSON.stringify(linkOption)}`)
     const { data: linkResp, error: linkError, mutate: linkMutate } = useFeedLinkList(linkOption);
 
     if (subsError) {
-        return <div>failed to load{JSON.stringify(subsError)}</div>;
+        return <div>failed to load subscriptions: {JSON.stringify(subsError)}</div>;
+    }
+    if (linkError) {
+        return <div>failed to load links: {JSON.stringify(linkError)}</div>;
     }
 
     if (subscriptionResp === undefined) {
@@ -54,7 +59,9 @@ export default function Home() {
                     {/* <NewTaskDialog /> */}
                 </div>
 
+                {subscriptionResp?.data.length}
                 {linkResp?.data.length}
+
             </div>
 
         </>
